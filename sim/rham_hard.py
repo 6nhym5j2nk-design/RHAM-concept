@@ -1,14 +1,14 @@
 """
-RHAM – Härtetest E7 (Stand 2026-10-07)
+RHAM - stress test E7 (as of 2026-10-07)
 
-S1  Überlappende Konzepte (Geschwister ähnlicher als Episoden desselben Konzepts)
-S2  Konzeptdrift (Zentren wandern) – laufender Mittelwert vs. gedeckelte Lernrate
-S3  Seltene Einzelepisoden – exakter Episodenabruf: assoziativ, über das Archiv
-    (Drei-Schichten-Modell), mit Wichtig-Markierung
+S1  Overlapping concepts (siblings more similar than two episodes of the same concept)
+S2  Concept drift (centers wander) - running mean vs. capped learning rate
+S3  Rare single episodes - exact episode retrieval: associative, via the archive
+    (three-layer model), with "important" tagging
 
-Gedächtnismodell wie E5 (rham_online.py), hier als Klasse OnlineRHAM mit
-Archiv: vergessene Episoden wandern zum Prototyp, der sie rekonstruiert, und
-bleiben dort als Rohvektor + ID abrufbar ("kalter" Zugriff, eigens gezählt).
+Memory model as in E5 (rham_online.py), here as the class OnlineRHAM with an
+archive: forgotten episodes move to the prototype that reconstructs them and
+remain retrievable there as a raw vector + ID ("cold" access, counted separately).
 """
 from __future__ import annotations
 
@@ -34,17 +34,17 @@ class OnlineRHAM:
         self.M0 = np.zeros((0, d)); self.M0_lab = np.zeros(0, int); self.M0_id = np.zeros(0, int)
         self.M0_tag = np.zeros(0, bool); self.M0_counted = np.zeros(0, bool)
         self.P = np.zeros((0, d)); self.P_n = np.zeros(0); self.P_lab = []
-        self.archive = []                     # je Prototyp: Liste (id, vec)
+        self.archive = []                     # per prototype: list of (id, vec)
         self.R = None
 
-    # ---------------------------------------------------------------- Wachphase
+    # ---------------------------------------------------------------- wake phase
     def observe(self, E, lab, ids, tag=None):
         tag = np.zeros(len(E), bool) if tag is None else tag
         self.M0 = np.vstack([self.M0, E]); self.M0_lab = np.concatenate([self.M0_lab, lab])
         self.M0_id = np.concatenate([self.M0_id, ids]); self.M0_tag = np.concatenate([self.M0_tag, tag])
         self.M0_counted = np.concatenate([self.M0_counted, np.zeros(len(E), bool)])
 
-    # ---------------------------------------------------------------- Schlaf
+    # ---------------------------------------------------------------- sleep
     def _update(self, j, X, labs):
         n_old = self.P_n[j] if self.n_cap is None else min(self.P_n[j], self.n_cap)
         tot = n_old + len(X)
@@ -64,7 +64,7 @@ class OnlineRHAM:
             m = newly & (best == j)
             self._update(j, M0[m], self.M0_lab[m])
         self.M0_counted |= assigned
-        # neue Prototypen (DP-means-artig)
+        # new prototypes (DP-means-like)
         un = np.where(~self.M0_counted)[0]
         if len(un) >= self.m_min:
             U = M0[un]; used = np.zeros(len(un), bool)
@@ -86,10 +86,10 @@ class OnlineRHAM:
                 self.P_lab.append(lc); self.archive.append([])
                 used[grp] = True
             self.M0_counted[un[used]] = True
-        # Teilungsregel: Prototyp spalten, wenn seine Episoden zwei Gruppen bilden
+        # split rule: split a prototype if its episodes form two groups
         if self.split and len(self.P):
             self._split_pass()
-        # Vergessen -> Archiv
+        # forgetting -> archive
         if self.do_forget and len(self.P):
             sim = self.M0 @ self.P.T; b = sim.argmax(1); s = sim.max(1)
             drop = (s >= self.tau_f) & (self.P_n[b] >= self.m_min)
@@ -100,13 +100,13 @@ class OnlineRHAM:
             keep = ~drop
             for a in ("M0", "M0_lab", "M0_id", "M0_tag", "M0_counted"):
                 setattr(self, a, getattr(self, a)[keep])
-        # obere Ebenen
+        # upper levels
         if len(self.P) >= 2:
             self.R, _ = rs.grow_hierarchy(self.P, self.beta, seed=self.seed)
 
 
     def _members(self, j):
-        """Episoden eines Prototyps: Archiv + zugeordnete M0-Episoden."""
+        """Episodes of a prototype: archive + assigned M0 episodes."""
         V, L, src = [], [], []
         for a in self.archive[j]:
             V.append(a[1]); L.append(a[2]); src.append(("A", a))
@@ -117,8 +117,8 @@ class OnlineRHAM:
         return (np.array(V) if V else np.zeros((0, self.d))), np.array(L, int), src
 
     def _split_stat(self, V):
-        """log W(1) - log W(2) der Daten minus derselbe Wert für ein Nullmodell
-        'ein Konzept + isotropes Rauschen' gleicher Streuung (Gap-Logik)."""
+        """log W(1) - log W(2) of the data minus the same value for a null
+        model of 'one concept + isotropic noise' with equal spread (gap logic)."""
         from sklearn.cluster import KMeans
         def red(X):
             w1 = ((X - X.mean(0)) ** 2).sum()
@@ -153,10 +153,10 @@ class OnlineRHAM:
                         a1 = [x[1] for x, g in zip(src, lab2) if x[0] == "A" and g == 1]
                         self.archive[j] = a0; self.archive.append(a1)
                         self.n_splits = getattr(self, "n_splits", 0) + 1
-                        continue          # denselben Prototyp erneut prüfen
+                        continue          # re-check the same prototype
             j += 1
 
-    # ---------------------------------------------------------------- Abruf
+    # ---------------------------------------------------------------- retrieval
     def proto_labels(self):
         return np.array([max(lc, key=lc.get) if lc else -1 for lc in self.P_lab])
 
@@ -173,9 +173,9 @@ class OnlineRHAM:
         return np.where(sP >= sM, lP, lM), cost
 
     def recall_episode(self, Q, deep=False, n_protos=2):
-        """Exakter Episodenabruf: gibt ID der ähnlichsten gespeicherten Episode.
-        deep=True durchsucht zusätzlich die Archivlisten der n_protos ähnlichsten
-        Prototypen (kalter Zugriff, getrennt gezählt)."""
+        """Exact episode retrieval: returns the ID of the most similar stored
+        episode. deep=True additionally searches the archive lists of the
+        n_protos most similar prototypes (cold access, counted separately)."""
         n = len(Q); out = np.full(n, -1); hot = np.zeros(n); cold = np.zeros(n)
         best = np.full(n, -np.inf)
         if len(self.M0):
@@ -218,7 +218,7 @@ def flat_concept_acc(Ef, Lf, Q, cq):
     return float((Lf[(Q @ Ef.T).argmax(1)] == cq).mean())
 
 
-# ---------------------------------------------------------------- S1 Überlappung
+# ---------------------------------------------------------------- S1 overlap
 def S1(seeds, scales=(1.0, 0.8, 0.6, 0.45), K=6, h=3, d=64, T=10000, S=1000, sigma=0.4, split=False):
     rows = []
     for sc in scales:
@@ -235,8 +235,8 @@ def S1(seeds, scales=(1.0, 0.8, 0.6, 0.45), K=6, h=3, d=64, T=10000, S=1000, sig
             Ef = np.vstack(Ef); Lf = np.concatenate(Lf)
             Q, cq = episodes(C, p, 1000, sigma, rng)
             pred, cost = M.retrieve_concept(Q)
-            oracle = float(((Q @ C.T).argmax(1) == cq).mean())          # nächstes wahres Zentrum
-            # Wie viele wahre Konzepte teilen sich einen Prototyp? (Verschmelzung)
+            oracle = float(((Q @ C.T).argmax(1) == cq).mean())          # nearest true center
+            # how many true concepts share one prototype? (merging)
             pl = M.proto_labels(); covered = len(set(pl.tolist()))
             row = {"split": split, "n_splits": getattr(M, "n_splits", 0), "scale": sc, "seed": s, "sibling_cos": round(sib, 3), "oracle": oracle,
                    "rham": float((pred == cq).mean()), "flat": flat_concept_acc(Ef, Lf, Q, cq),
@@ -246,7 +246,7 @@ def S1(seeds, scales=(1.0, 0.8, 0.6, 0.45), K=6, h=3, d=64, T=10000, S=1000, sig
     return rows
 
 
-# ---------------------------------------------------------------- S2 Drift
+# ---------------------------------------------------------------- S2 drift
 def S2(seeds, deltas=(0.0, 0.05, 0.1, 0.2), caps=(None, 30), K=6, h=3, d=64, T=15000, S=1000, sigma=0.4):
     rows = []
     for dl in deltas:
@@ -265,7 +265,7 @@ def S2(seeds, deltas=(0.0, 0.05, 0.1, 0.2), caps=(None, 30), K=6, h=3, d=64, T=1
                     traj.append({"t": t + S, "rham": float((pred == cq).mean()),
                                  "flat": flat_concept_acc(np.vstack(Ef), np.concatenate(Lf), Q, cq),
                                  "n_proto": int(len(M.P)), "assoc": M.assoc_size()})
-                    # Drift: jedes Zentrum macht einen Schritt der Länge dl
+                    # drift: each center takes a step of length dl
                     if dl > 0:
                         C = normalize(C + normalize(rng.standard_normal(C.shape)) * dl)
                 row = {"delta": dl, "cap": cap, "seed": s, "traj": traj,
@@ -273,11 +273,11 @@ def S2(seeds, deltas=(0.0, 0.05, 0.1, 0.2), caps=(None, 30), K=6, h=3, d=64, T=1
                        "n_proto_end": traj[-1]["n_proto"], "assoc_end": traj[-1]["assoc"]}
                 rows.append(row)
                 print(f"S2 delta={dl} cap={cap} seed={s} rham={row['rham_end']:.3f} flat={row['flat_end']:.3f} "
-                      f"Prototypen={row['n_proto_end']} assoz={row['assoc_end']}", flush=True)
+                      f"prototypes={row['n_proto_end']} assoc={row['assoc_end']}", flush=True)
     return rows
 
 
-# ---------------------------------------------------------------- S3 Seltene Episoden
+# ---------------------------------------------------------------- S3 rare episodes
 def S3(seeds, K=6, h=3, d=64, T=10000, S=1000, sigma=0.4, n_rare=20, q_noise=0.1):
     rows = []
     for protect in (False, True):
@@ -285,18 +285,18 @@ def S3(seeds, K=6, h=3, d=64, T=10000, S=1000, sigma=0.4, n_rare=20, q_noise=0.1
             rng = np.random.default_rng(s)
             C = concepts(K, h, d, rng); p = zipf_weights(len(C), 1.1, rng)
             M = OnlineRHAM(d, s, protect_tagged=protect)
-            nid = 0; rare = []           # (id, vec, art, zeitpunkt)
+            nid = 0; rare = []           # (id, vec, kind, timestamp)
             allE, allID = [], []
             for t in range(0, T, S):
                 E, c = episodes(C, p, S, sigma, rng)
                 ids = np.arange(nid, nid + S); nid += S
-                # seltene Episoden: halb "untypisch" (zufällige Richtung), halb "typisch aussehend"
+                # rare episodes: half "atypical" (random direction), half "typical-looking"
                 far = normalize(rng.standard_normal((n_rare // 2, d)))
                 near, cn = episodes(C, p, n_rare // 2, sigma, rng)
                 R_ = np.vstack([far, near]); Rl = np.r_[np.full(n_rare // 2, -1), cn]
                 Rid = np.arange(nid, nid + n_rare); nid += n_rare
                 for k in range(n_rare):
-                    rare.append((int(Rid[k]), R_[k], "untypisch" if k < n_rare // 2 else "typisch", t))
+                    rare.append((int(Rid[k]), R_[k], "atypical" if k < n_rare // 2 else "typical_looking", t))
                 X = np.vstack([E, R_]); L = np.r_[c, Rl]; I = np.r_[ids, Rid]
                 tag = np.r_[np.zeros(S, bool), np.ones(n_rare, bool)]
                 M.observe(X, L, I, tag); allE.append(X); allID.append(I)
@@ -308,7 +308,7 @@ def S3(seeds, K=6, h=3, d=64, T=10000, S=1000, sigma=0.4, n_rare=20, q_noise=0.1
             hot_id, hot_c, _ = M.recall_episode(Q, deep=False)
             deep_id, deep_hot, deep_cold = M.recall_episode(Q, deep=True)
             flat_id = allID[(Q @ allE.T).argmax(1)]
-            for kd in ("untypisch", "typisch"):
+            for kd in ("atypical", "typical_looking"):
                 m = kind == kd
                 row = {"protect": protect, "seed": s, "kind": kd,
                        "assoc_recall": float((hot_id[m] == rid[m]).mean()),
@@ -317,11 +317,11 @@ def S3(seeds, K=6, h=3, d=64, T=10000, S=1000, sigma=0.4, n_rare=20, q_noise=0.1
                        "hot_cost": float(deep_hot[m].mean()), "cold_cost": float(deep_cold[m].mean()),
                        "flat_cost": int(len(allE)), "M0": int(len(M.M0)), "assoc": M.assoc_size()}
                 rows.append(row); print("S3", row, flush=True)
-            # zusätzlich: gewöhnliche Episoden exakt abrufen (Kontrolle)
+            # additionally: retrieve ordinary episodes exactly (control)
             pick = rng.choice(len(allE), 300, replace=False)
             Qo = normalize(allE[pick] + normalize(rng.standard_normal((300, d))) * q_noise)
             h_, _, _ = M.recall_episode(Qo, deep=False); dp_, dh_, dc_ = M.recall_episode(Qo, deep=True)
-            rows.append({"protect": protect, "seed": s, "kind": "gewöhnlich",
+            rows.append({"protect": protect, "seed": s, "kind": "ordinary",
                          "assoc_recall": float((h_ == allID[pick]).mean()),
                          "deep_recall": float((dp_ == allID[pick]).mean()),
                          "flat_recall": float((allID[(Qo @ allE.T).argmax(1)] == allID[pick]).mean()),
@@ -339,4 +339,4 @@ if __name__ == "__main__":
     out = {which: fn(seeds)}
     out["runtime_s"] = round(time.time() - t0, 1)
     json.dump(out, open(f"results_E7_{which}.json", "w"), indent=1)
-    print("fertig", out["runtime_s"])
+    print("done", out["runtime_s"])

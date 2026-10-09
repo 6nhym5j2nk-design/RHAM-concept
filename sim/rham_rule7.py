@@ -1,22 +1,22 @@
 """
-RHAM – Regel 7 (Prototyp-Alterung) und anisotropes Rauschen, Experiment E8 (Stand 2026-10-07)
+RHAM - Rule 7 (prototype aging) and anisotropic noise, experiment E8 (as of 2026-10-07)
 
-OnlineRHAM7 erweitert OnlineRHAM (rham_hard.py) um
-  7a gedeckelte Lernrate (n_cap, bereits vorhanden)
-  7b Altersgrenze: in Prototypen eingerechnete Episoden gehen nach age_limit
-     Schlafphasen ins Archiv, auch wenn die Rekonstruktion < tau_forget ist
-  7c Ruhestand: Prototypen ohne Zuordnung seit retire_after Schlafphasen werden
-     "kalt" (nicht gelöscht). Bei neuer Zuordnung werden sie reaktiviert; der
-     Abruf fällt auf kalte Prototypen zurück, wenn der beste heiße Treffer
-     < tau_assign ist (Kosten getrennt gezählt)
-  7d Zusammenführen: Paare gegenseitig nächster aktiver Prototypen mit Kosinus
-     >= tau_assign werden verschmolzen, wenn ihre gemeinsamen Episoden den
-     Teilungstest NICHT bestehen (Statistik <= merge_margin < split_margin)
-und um ein zweites Nullmodell für den Teilungstest:
-  split_null="iso": ein Konzept + isotropes Rauschen (Runde 3)
-  split_null="cov": Gauß mit geschätzter Kovarianz der Daten (+ Ridge)
+OnlineRHAM7 extends OnlineRHAM (rham_hard.py) with
+  7a capped learning rate (n_cap, already present)
+  7b age limit: episodes folded into a prototype go to the archive after
+     age_limit sleep phases, even if reconstruction is below tau_forget
+  7c retirement: prototypes with no assignment for retire_after sleep phases
+     become "cold" (not deleted). They are reactivated on a new assignment;
+     retrieval falls back to cold prototypes when the best hot match is
+     < tau_assign (cost counted separately)
+  7d merging: pairs of mutually nearest active prototypes with cosine
+     >= tau_assign are merged when their combined episodes FAIL the split
+     test (statistic <= merge_margin < split_margin)
+and adds a second null model for the split test:
+  split_null="iso": one concept + isotropic noise (round 3)
+  split_null="cov": Gaussian with the data's estimated covariance (+ ridge)
 
-Zustände der Prototypen: 0 aktiv, 1 kalt (Ruhestand), 2 tot (verschmolzen; Zeile = 0)
+Prototype states: 0 active, 1 cold (retired), 2 dead (merged away; row = 0)
 """
 from __future__ import annotations
 
@@ -45,7 +45,7 @@ class OnlineRHAM7(OnlineRHAM):
         self.hot_idx = np.zeros(0, int)
         self.n_merges = 0; self.n_splits = 0; self.n_revived = 0
 
-    # ------------------------------------------------------------ Hilfen
+    # ------------------------------------------------------------ helpers
     def observe(self, E, lab, ids, tag=None):
         super().observe(E, lab, ids, tag)
         self.M0_birth = np.concatenate([self.M0_birth, np.full(len(E), self.sleep_idx)])
@@ -66,10 +66,11 @@ class OnlineRHAM7(OnlineRHAM):
             km = KMeans(2, n_init=3, random_state=self.seed, max_iter=60).fit(X)
             return np.log(w1) - np.log(km.inertia_), km
         if self.split_null == "gmeans":
-            # G-means (Hamerly & Elkan 2003), mit Kreuzanpassung: Projektion auf die Achse der beiden
-            # 2-Means-Zentren, Anderson-Darling-Normalitätstest. Rückgabe A*2 - kritischer
-            # Wert (alpha = 0,0001: 1,8692) -> > 0 heißt "nicht normal" = teilen.
-            # Kreuzanpassung gegen Selektionsverzerrung: Achse auf Hälfte A, Test auf Hälfte B
+            # G-means (Hamerly & Elkan 2003), with cross-fitting: project onto the
+            # axis of the two 2-means centers, Anderson-Darling normality test.
+            # Returns A*2 - critical value (alpha = 0.0001: 1.8692) -> > 0 means
+            # "not normal" = split. Cross-fitting guards against selection bias:
+            # axis fit on half A, test evaluated on half B.
             perm = self.rng.permutation(len(V)); A, B = V[perm[: len(V) // 2]], V[perm[len(V) // 2:]]
             kmA = KMeans(2, n_init=3, random_state=self.seed, max_iter=60).fit(A)
             v = kmA.cluster_centers_[0] - kmA.cluster_centers_[1]
@@ -94,7 +95,7 @@ class OnlineRHAM7(OnlineRHAM):
             nulls = [mu + sd * self.rng.standard_normal(V.shape) for _ in range(2)]
         return r_data - np.mean([red(Z)[0] for Z in nulls]), km
 
-    # ------------------------------------------------------------ Schlaf
+    # ------------------------------------------------------------ sleep
     def sleep(self):
         self.sleep_idx += 1
         self._pad()
@@ -111,7 +112,7 @@ class OnlineRHAM7(OnlineRHAM):
             if self.state[j] == 1:
                 self.state[j] = 0; self.n_revived += 1
         self.M0_counted |= assigned
-        # neue Prototypen (wie Basisklasse)
+        # new prototypes (as in the base class)
         un = np.where(~self.M0_counted)[0]
         if len(un) >= self.m_min:
             U = M0[un]; used = np.zeros(len(un), bool)
@@ -134,13 +135,13 @@ class OnlineRHAM7(OnlineRHAM):
                 used[grp] = True
             self.M0_counted[un[used]] = True
         self._pad()
-        # Regel 6: Teilen (nur aktive)
+        # rule 6: splitting (active prototypes only)
         if self.split and len(self.P):
             self._split_pass_active()
-        # Regel 7d: Zusammenführen
+        # rule 7d: merging
         if self.merge:
             self._merge_pass()
-        # Regel 5 + 7b: Vergessen -> Archiv
+        # rule 5 + 7b: forgetting -> archive
         if self.do_forget and len(self.P):
             sim = self.M0 @ self.P.T; b = sim.argmax(1); s = sim.max(1)
             drop = (s >= self.tau_f) & (self.P_n[b] >= self.m_min)
@@ -151,11 +152,11 @@ class OnlineRHAM7(OnlineRHAM):
             for i in np.where(drop)[0]:
                 self.archive[b[i]].append((int(self.M0_id[i]), self.M0[i].copy(), int(self.M0_lab[i])))
             self._filter_M0(~drop)
-        # Regel 7c: Ruhestand
+        # rule 7c: retirement
         if self.retire_after is not None:
             old = (self.state == 0) & (self.sleep_idx - self.last >= self.retire_after)
             self.state[old] = 1
-        # obere Ebenen über aktive Prototypen
+        # upper levels over active prototypes
         self.hot_idx = np.where(self.state == 0)[0]
         self.R = rs.grow_hierarchy(self.P[self.hot_idx], self.beta, seed=self.seed)[0] if len(self.hot_idx) >= 2 else None
 
@@ -213,7 +214,7 @@ class OnlineRHAM7(OnlineRHAM):
                 self.n_merges += 1
                 done.update((a, b))
 
-    # ------------------------------------------------------------ Abruf
+    # ------------------------------------------------------------ retrieval
     def retrieve_concept(self, Q):
         n = len(Q); cost = np.zeros(n); cold = np.zeros(n)
         labs = self.proto_labels()
@@ -245,9 +246,9 @@ class OnlineRHAM7(OnlineRHAM):
 
 # ============================================================================
 VARIANTS = {
-    "Basis (1/n)":        dict(),
-    "gedeckelt":          dict(n_cap=30),
-    "Regel 7 komplett":   dict(n_cap=30, age_limit=3, retire_after=5, merge=True),
+    "baseline (1/n)":     dict(),
+    "capped":             dict(n_cap=30),
+    "rule 7 complete":    dict(n_cap=30, age_limit=3, retire_after=5, merge=True),
 }
 
 
@@ -259,7 +260,7 @@ def E8_drift(seeds, deltas=(0.0, 0.1, 0.2, 0.3), K=6, h=3, d=64, T=20000, S=1000
             for s in seeds:
                 rng = np.random.default_rng(s)
                 C = concepts(K, h, d, rng); p = zipf_weights(len(C), 1.1, rng)
-                rank = np.argsort(np.argsort(-p))            # 0 = häufigstes Konzept
+                rank = np.argsort(np.argsort(-p))            # 0 = most frequent concept
                 head = rank < int(0.2 * len(C)); tail = rank >= int(0.5 * len(C))
                 M = OnlineRHAM7(d, s, **VARIANTS[vname]); nid = 0; traj = []
                 for t in range(0, T, S):
@@ -267,7 +268,7 @@ def E8_drift(seeds, deltas=(0.0, 0.1, 0.2, 0.3), K=6, h=3, d=64, T=20000, S=1000
                     E = normalize(C[c] + normalize(rng.standard_normal((S, d))) * sigma)
                     M.observe(E, c, np.arange(nid, nid + S)); nid += S
                     M.sleep()
-                    # Probe: je 300 Abfragen aus Kopf- und Schwanzkonzepten (gleichverteilt innerhalb)
+                    # probe: 300 queries each from head and tail concepts (uniform within)
                     res = {}
                     for name, mask in (("head", head), ("tail", tail)):
                         cq = rng.choice(np.where(mask)[0], 300)
@@ -280,16 +281,16 @@ def E8_drift(seeds, deltas=(0.0, 0.1, 0.2, 0.3), K=6, h=3, d=64, T=20000, S=1000
                         C = normalize(C + normalize(rng.standard_normal(C.shape)) * dl)
                 last = traj[-1]
                 rows.append({"delta": dl, "variant": vname, "seed": s, "traj": traj})
-                print(f"E8drift d={dl} {vname:18s} s={s} Kopf={last['acc_head']:.3f} Schwanz={last['acc_tail']:.3f} "
-                      f"M0={last['M0']} heiß={last['hot']} kalt={last['cold']} assoz={last['assoc']} "
-                      f"Kosten={last['cost_head']:.0f}/{last['cost_tail']:.0f}+kalt {last['cold_tail']:.0f} "
-                      f"Merges={last['merges']} reakt.={last['revived']}", flush=True)
+                print(f"E8drift d={dl} {vname:18s} s={s} head={last['acc_head']:.3f} tail={last['acc_tail']:.3f} "
+                      f"M0={last['M0']} hot={last['hot']} cold={last['cold']} assoc={last['assoc']} "
+                      f"cost={last['cost_head']:.0f}/{last['cost_tail']:.0f}+cold {last['cold_tail']:.0f} "
+                      f"merges={last['merges']} revived={last['revived']}", flush=True)
     return rows
 
 
 def anisotropic_episodes(C, U, p, n, sigma, alpha, rng):
-    """Rauschen je Konzept entlang einer eigenen Richtung u_c um Faktor alpha gestreckt,
-    Gesamtvarianz wie im isotropen Fall."""
+    """Noise per concept stretched by factor alpha along its own direction
+    u_c, total variance matched to the isotropic case."""
     d = C.shape[1]
     c = rng.choice(len(C), size=n, p=p)
     g = rng.standard_normal((n, d))
@@ -300,12 +301,12 @@ def anisotropic_episodes(C, U, p, n, sigma, alpha, rng):
 
 
 def E8_aniso(seeds, alphas=(1.0, 4.0, 8.0), scales=(1.0, 0.6), K=6, h=3, d=64, T=8000, S=1000, sigma_norm=0.4, only=None):
-    sigma = sigma_norm  # erwartete Rauschnorm wie im isotropen Fall (0,4)
+    sigma = sigma_norm  # expected noise norm, as in the isotropic case (0.4)
     rows = []
-    variants = [("ohne Teilung", dict(split=False)),
-                ("Teilung, iso-Null", dict(split=True, split_null="iso")),
-                ("Teilung, cov-Null", dict(split=True, split_null="cov")),
-                ("Teilung, G-means", dict(split=True, split_null="gmeans", split_margin=0.0, merge_margin=-1.0))]
+    variants = [("no split", dict(split=False)),
+                ("split, iso-null", dict(split=True, split_null="iso")),
+                ("split, cov-null", dict(split=True, split_null="cov")),
+                ("split, G-means", dict(split=True, split_null="gmeans", split_margin=0.0, merge_margin=-1.0))]
     for a in alphas:
         for sc in scales:
             for vname, kw in variants:
@@ -338,14 +339,14 @@ if __name__ == "__main__":
     t0 = time.time()
     if which == "drift":
         out = {"drift": E8_drift(seeds)}
-    elif which.startswith("drift_"):          # drift_0.2 etc. für Parallelisierung
+    elif which.startswith("drift_"):          # drift_0.2 etc. for parallelization
         out = {which: E8_drift(seeds, deltas=(float(which.split("_")[1]),))}
     elif which == "aniso":
         out = {"aniso": E8_aniso(seeds)}
-    elif which.startswith("gmeans_"):        # nur G-means-Variante nachrechnen
-        out = {which: E8_aniso(seeds, alphas=(float(which.split("_")[1]),), only="Teilung, G-means")}
+    elif which.startswith("gmeans_"):        # recompute only the G-means variant
+        out = {which: E8_aniso(seeds, alphas=(float(which.split("_")[1]),), only="split, G-means")}
     elif which.startswith("aniso_"):
         out = {which: E8_aniso(seeds, alphas=(float(which.split("_")[1]),))}
     out["runtime_s"] = round(time.time() - t0, 1)
     json.dump(out, open(f"results_E8_{which}.json", "w"), indent=1)
-    print("fertig", out["runtime_s"])
+    print("done", out["runtime_s"])

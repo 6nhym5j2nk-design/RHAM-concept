@@ -1,19 +1,19 @@
 """
-RHAM – Minimalsimulation (Stand 2026-10-07)
+RHAM - minimal simulation (as of 2026-10-07)
 
-Vergleicht einen flachen modernen Hopfield-Speicher (= Softmax-Attention,
-Ramsauer et al. 2020) mit einer RHAM-Hierarchie auf synthetischen Baumdaten.
+Compares a flat modern Hopfield memory (= softmax attention,
+Ramsauer et al. 2020) with an RHAM hierarchy on synthetic tree data.
 
-Experimente
-  E1  Abrufgenauigkeit vs. Speichergröße N (P1), bei festem beta und bei
-      für den flachen Speicher optimal gewähltem beta
-  E2  Rechenaufwand pro Abruf (Skalarprodukte)
-  E3  Automatisches Ebenenwachstum: Interferenz-Trigger + Gap-Statistik (P2, P3)
-  E4  Selektives Vergessen: Rekonstruktionsregel vs. Zufall
+Experiments
+  E1  Retrieval accuracy vs. memory size N (P1), at fixed beta and at
+      the beta optimally chosen for the flat memory
+  E2  Compute cost per retrieval (dot products)
+  E3  Automatic level growth: interference trigger + gap statistic (P2, P3)
+  E4  Selective forgetting: reconstruction rule vs. random
 
-Alle Vektoren liegen auf der Einheitssphäre. Ein Abruf gilt als erfolgreich,
-wenn nach einem Hopfield-Update-Schritt das maximale Attention-Gewicht auf
-dem richtigen Muster liegt UND > 0.9 ist (scharfer Abruf, keine Mischung).
+All vectors lie on the unit sphere. A retrieval counts as successful if,
+after one Hopfield update step, the maximum attention weight falls on the
+correct pattern AND is > 0.9 (sharp retrieval, no mixed state).
 """
 from __future__ import annotations
 
@@ -26,33 +26,33 @@ import numpy as np
 from sklearn.cluster import KMeans
 
 # ----------------------------------------------------------------------------
-# Daten
+# Data
 # ----------------------------------------------------------------------------
 
 def normalize(x, axis=-1):
-    # Nullvektoren (z. B. Residuum eines Ein-Element-Clusters) bleiben null,
-    # statt NaN zu erzeugen (Bugfix 2026-10-07, siehe Fehlerlog).
+    # Zero vectors (e.g. the residual of a singleton cluster) stay zero instead
+    # of producing NaN (bugfix 2026-10-07, see error log).
     n = np.linalg.norm(x, axis=axis, keepdims=True)
     return np.divide(x, n, out=np.zeros_like(x, dtype=float), where=n > 1e-12)
 
 
 def make_tree(K: int, h: int, d: int, rng, level_scale=None, leaf_jitter=False):
-    """Baum mit Verzweigung K und Tiefe h. Jedes Blatt = Summe zufälliger
-    Einheitsvektoren entlang seines Pfades (eine Komponente pro Ebene).
-    Rückgabe: Blätter (K^h x d, normiert) und Pfad-Labels (K^h x h)."""
+    """Tree with branching factor K and depth h. Each leaf = sum of random
+    unit vectors along its path (one component per level).
+    Returns: leaves (K^h x d, normalized) and path labels (K^h x h)."""
     if level_scale is None:
         level_scale = np.ones(h)
     n = K ** h
     labels = np.array(np.unravel_index(np.arange(n), [K] * h)).T  # n x h
     X = np.zeros((n, d))
-    # Komponenten je Ebene: für jeden Präfix ein eigener Zufallsvektor
+    # Per-level components: a separate random vector for each prefix
     for lvl in range(h):
         n_nodes = K ** (lvl + 1)
         comps = normalize(rng.standard_normal((n_nodes, d)))
         prefix_id = np.ravel_multi_index(labels[:, : lvl + 1].T, [K] * (lvl + 1))
         scale = level_scale[lvl]
         if leaf_jitter and lvl == h - 1:
-            # variable Residuengröße der Blätter (für E4)
+            # variable leaf residual size (for E4)
             scale = scale * rng.lognormal(0.0, 0.6, size=(n, 1))
         X += scale * comps[prefix_id]
     return normalize(X), labels
@@ -64,7 +64,7 @@ def corrupt(X, eta, rng):
 
 
 # ----------------------------------------------------------------------------
-# Flacher moderner Hopfield-Speicher
+# Flat modern Hopfield memory
 # ----------------------------------------------------------------------------
 
 def softmax_rows(S):
@@ -74,28 +74,28 @@ def softmax_rows(S):
 
 
 def flat_retrieve(X, Q, beta):
-    """Ein Hopfield-Schritt xi_new = X^T softmax(beta X q); danach Attention
-    des neuen Zustands als Erfolgsmaß. Rückgabe: (idx, maxweight)."""
+    """One Hopfield step xi_new = X^T softmax(beta X q); then attention
+    of the new state as the success measure. Returns: (idx, maxweight)."""
     A = softmax_rows(beta * Q @ X.T)          # nq x N
-    Xi = normalize(A @ X)                      # neuer Zustand
+    Xi = normalize(A @ X)                      # new state
     A2 = softmax_rows(beta * Xi @ X.T)
     return A2.argmax(1), A2.max(1)
 
 
 # ----------------------------------------------------------------------------
-# RHAM-Hierarchie
+# RHAM hierarchy
 # ----------------------------------------------------------------------------
 
 @dataclass
 class Level:
-    vecs: np.ndarray            # Rohvektoren dieser Ebene (normiert)
-    parent: np.ndarray | None   # Index des Eltern-Prototyps in der Ebene darüber
-    res_keys: np.ndarray | None = None  # normierte Residuen relativ zum Eltern-Prototyp
+    vecs: np.ndarray            # raw vectors of this level (normalized)
+    parent: np.ndarray | None   # index of the parent prototype in the level above
+    res_keys: np.ndarray | None = None  # normalized residuals relative to the parent prototype
 
 
 @dataclass
 class RHAM:
-    levels: list = field(default_factory=list)   # levels[0] = M0 (Blätter)
+    levels: list = field(default_factory=list)   # levels[0] = M0 (leaves)
 
     @property
     def depth(self):
@@ -109,7 +109,7 @@ def kmeans(X, k, seed):
 
 
 def build_hierarchy_fixed(X, cluster_counts, seed):
-    """Hierarchie mit vorgegebener Clusterzahl je Ebene (Prototypen gelernt)."""
+    """Hierarchy with a fixed number of clusters per level (prototypes learned)."""
     levels = [Level(vecs=X, parent=None)]
     cur = X
     for k in cluster_counts:
@@ -125,7 +125,7 @@ def build_hierarchy_fixed(X, cluster_counts, seed):
 def _attach_residuals(levels):
     for i, L in enumerate(levels):
         if L.parent is None:
-            L.res_keys = L.vecs.copy()   # oberste Ebene: Rohschlüssel
+            L.res_keys = L.vecs.copy()   # top level: raw keys
         else:
             P = levels[i + 1].vecs[L.parent]
             L.res_keys = normalize(L.vecs - P)
@@ -141,13 +141,13 @@ def _group_log_softmax(s, groups):
 
 
 def rham_retrieve(R: RHAM, Q, beta, beam=2, mode="hsoftmax", beta_final=None):
-    """mode='exact' (v3): Routing wie v2, Endschritt auf Rohvektoren der
-    Kandidaten (exakte Zerlegung, keine Rauschverstärkung).
-    mode='hsoftmax' (v2): Softmax je Geschwistergruppe, Pfad-
-    wahrscheinlichkeiten multipliziert (hierarchische Softmax). Kandidaten
-    verschiedener Eltern sind so vergleichbar.
-    mode='shared' (v1): gemeinsame Softmax über normierte Residuen
-    verschiedener Eltern – mathematisch inkonsistent, nur zum Vergleich."""
+    """mode='exact' (v3): routing as in v2, final step on the raw vectors of the
+    candidates (exact decomposition, no noise amplification).
+    mode='hsoftmax' (v2): softmax per sibling group, path probabilities
+    multiplied (hierarchical softmax). Candidates from different parents are
+    thus comparable.
+    mode='shared' (v1): shared softmax over normalized residuals from
+    different parents - mathematically inconsistent, for comparison only."""
     if mode == "shared":
         return _rham_retrieve_shared(R, Q, beta, beam)
     nq = Q.shape[0]
@@ -175,8 +175,8 @@ def rham_retrieve(R: RHAM, Q, beta, beam=2, mode="hsoftmax", beta_final=None):
                 logp_par = np.concatenate([np.full(len(child_lists[lvl - 1][c]), lp) for c, lp in zip(chosen, chosen_lp)])
                 par = np.concatenate([np.full(len(child_lists[lvl - 1][c]), c) for c in chosen])
             elif mode == "exact":
-                # v3: Endschritt mit exakter Zerlegung q.x = q.p + q.(x-p), d. h.
-                # Hopfield-Schritt auf den Rohvektoren der Kandidaten
+                # v3: final step with exact decomposition q.x = q.p + q.(x-p), i.e.
+                # a Hopfield step on the candidates' raw vectors
                 bf = beta if beta_final is None else beta_final
                 X = L.vecs[cand]
                 A = softmax_rows(bf * (q @ X.T)[None])
@@ -185,7 +185,7 @@ def rham_retrieve(R: RHAM, Q, beta, beam=2, mode="hsoftmax", beta_final=None):
                 j = A2.argmax()
                 out_idx[qi] = cand[j]; out_w[qi] = A2[j]
             else:
-                # Hopfield-Schritt je Gruppe im eigenen Residuenraum, dann Re-Attention
+                # Hopfield step per group in its own residual space, then re-attention
                 prob = np.empty(len(cand))
                 for g in np.unique(par):
                     m = par == g
@@ -201,21 +201,21 @@ def rham_retrieve(R: RHAM, Q, beta, beam=2, mode="hsoftmax", beta_final=None):
 
 
 def _rham_retrieve_shared(R: RHAM, Q, beta, beam=2):
-    """Top-down: auf jeder Ebene Hopfield-Schritt im eigenen Residuenraum,
-    Beam der besten Kandidaten absteigen. Rückgabe: idx, maxweight, Kosten."""
+    """Top-down: on each level a Hopfield step in its own residual space,
+    descending the beam of best candidates. Returns: idx, maxweight, cost."""
     nq = Q.shape[0]
     out_idx = np.empty(nq, dtype=int)
     out_w = np.empty(nq)
     cost = np.zeros(nq)
     top = R.levels[-1]
-    # Kinderlisten vorberechnen
+    # precompute child lists
     child_lists = []
     for i in range(1, R.depth):
         par = R.levels[i - 1].parent
         child_lists.append([np.where(par == j)[0] for j in range(R.levels[i].vecs.shape[0])])
     for qi in range(nq):
         q = Q[qi]
-        # oberste Ebene: alle Kandidaten, kein Eltern-Prototyp
+        # top level: all candidates, no parent prototype
         cand = np.arange(top.vecs.shape[0])
         parents_of_cand = np.full(len(cand), -1)
         for lvl in range(R.depth - 1, -1, -1):
@@ -228,11 +228,11 @@ def _rham_retrieve_shared(R: RHAM, Q, beta, beam=2):
             keys = L.res_keys[cand]
             s = beta * np.einsum("ij,ij->i", qr, keys)
             cost[qi] += len(cand)
-            # Softmax getrennt je Eltern-Gruppe wäre exakter; hier gemeinsam,
-            # da Residuen je Gruppe vergleichbar normiert sind.
+            # A softmax separated per parent group would be more exact; here shared,
+            # since residuals are normalized comparably within each group.
             w = np.exp(s - s.max()); w /= w.sum()
             if lvl == 0:
-                # finaler Hopfield-Schritt im Residuenraum und Re-Attention
+                # final Hopfield step in residual space and re-attention
                 xi = normalize((w[:, None] * keys).sum(0, keepdims=True))[0]
                 s2 = beta * keys @ xi
                 w2 = np.exp(s2 - s2.max()); w2 /= w2.sum()
@@ -253,11 +253,11 @@ def _rham_retrieve_shared(R: RHAM, Q, beta, beam=2):
 
 
 # ----------------------------------------------------------------------------
-# Interferenz und automatisches Wachstum
+# Interference and automatic growth
 # ----------------------------------------------------------------------------
 
 def interference(X, beta, eps=0.05):
-    """Anteil Muster mit Ramsauer-Fehlerschranke 2(N-1)exp(-beta*Delta) > eps."""
+    """Fraction of patterns whose Ramsauer error bound 2(N-1)exp(-beta*Delta) > eps."""
     N = X.shape[0]
     if N < 2:
         return 0.0
@@ -269,8 +269,8 @@ def interference(X, beta, eps=0.05):
 
 
 def gap_select_k(X, seed, k_grid, n_null=2):
-    """Gap-Statistik (Tibshirani, Walther & Hastie 2001), Nullmodell:
-    gleichverteilte Punkte auf der Sphäre gleicher Dimension."""
+    """Gap statistic (Tibshirani, Walther & Hastie 2001), null model:
+    uniformly distributed points on the sphere of the same dimension."""
     rng = np.random.default_rng(seed + 991)
     gaps = []
     for k in k_grid:
@@ -286,8 +286,8 @@ def gap_select_k(X, seed, k_grid, n_null=2):
 
 
 def grow_hierarchy(X, beta, seed, theta=0.2, gap_margin=0.15, max_levels=8):
-    """Wachstumsregel: neue Ebene, wenn I(M_n) > theta UND die Gap-Statistik
-    echte Clusterstruktur zeigt (MDL-Ersatz). Sonst Stopp."""
+    """Growth rule: a new level is created when I(M_n) > theta AND the gap
+    statistic shows genuine cluster structure (MDL surrogate). Otherwise stop."""
     levels = [Level(vecs=X, parent=None)]
     log = []
     cur = X
@@ -296,19 +296,19 @@ def grow_hierarchy(X, beta, seed, theta=0.2, gap_margin=0.15, max_levels=8):
         I = interference(cur, beta)
         entry = {"level": len(levels) - 1, "n": int(n), "interference": round(I, 3)}
         if I <= theta or n < 6:
-            entry["decision"] = "stop: Interferenz gering" if I <= theta else "stop: zu wenige Einheiten"
+            entry["decision"] = "stop: low interference" if I <= theta else "stop: too few units"
             log.append(entry); break
         k_grid = sorted({int(round(v)) for v in np.geomspace(2, max(3, n // 3), 14)})
         k, g, _ = gap_select_k(cur, seed, k_grid)
         entry.update({"k_best": int(k), "gap": round(g, 3)})
         if g < gap_margin:
-            entry["decision"] = "stop: keine Struktur (Gap zu klein)"
+            entry["decision"] = "stop: no structure (gap too small)"
             log.append(entry); break
         lab, _ = kmeans(cur, k, seed)
         protos = normalize(np.stack([cur[lab == c].mean(0) for c in range(k)]))
         levels[-1].parent = lab
         levels.append(Level(vecs=protos, parent=None))
-        entry["decision"] = f"neue Ebene M{len(levels)-1} mit {k} Prototypen"
+        entry["decision"] = f"new level M{len(levels)-1} with {k} prototypes"
         log.append(entry)
         cur = protos
     _attach_residuals(levels)
@@ -316,7 +316,7 @@ def grow_hierarchy(X, beta, seed, theta=0.2, gap_margin=0.15, max_levels=8):
 
 
 # ----------------------------------------------------------------------------
-# Experimente
+# Experiments
 # ----------------------------------------------------------------------------
 
 def nn_accuracy(X, Q, target):
@@ -356,8 +356,8 @@ def exp_E1(seeds, d=64, h=3, Ks=(4, 6, 8, 10, 13, 16), eta=0.35, betas=(8, 16, 3
 
 
 def exp_E1b(seeds, d=64, h=3, K=10, etas=(0.35, 0.7, 1.0, 1.3, 1.6, 2.0), betas=(8, 16, 32, 64, 128, 256), nq=300):
-    """Rausch-Sweep bei N=1000: wo liegt die Grenze, und hält RHAM die
-    Nächster-Nachbar-Obergrenze?"""
+    """Noise sweep at N=1000: where is the limit, and does RHAM hold the
+    nearest-neighbor ceiling?"""
     rows = []
     for eta in etas:
         for s in seeds:
@@ -382,7 +382,7 @@ def exp_E1b(seeds, d=64, h=3, K=10, etas=(0.35, 0.7, 1.0, 1.3, 1.6, 2.0), betas=
 
 
 def exp_E1c(seeds, d=64, h=3, K=10, etas=(1.0, 1.6, 2.0), beams=(1, 2, 4, 8), beta=64, nq=300):
-    """Beam-Breite vs. Fehlrouting: Genauigkeit und Kosten."""
+    """Beam width vs. misrouting: accuracy and cost."""
     rows = []
     for eta in etas:
         for s in seeds:
@@ -410,39 +410,40 @@ def exp_E3(seeds, d=64, configs=((8, 2), (6, 3), (4, 4), (3, 5)), beta=16):
             rng = np.random.default_rng(s)
             X, _ = make_tree(K, h, d, rng)
             R, log = grow_hierarchy(X, beta, seed=s)
-            rows.append({"data": f"Baum K={K}, h={h}", "N": X.shape[0], "true_levels": h,
+            rows.append({"data": f"tree K={K}, h={h}", "N": X.shape[0], "true_levels": h,
                          "found_levels": R.depth, "seed": s, "log": log})
-            print(f"E3 K={K} h={h} N={X.shape[0]} -> Ebenen {R.depth} (Soll {h})", flush=True)
-    # Kontrolle P3: i.i.d.-Daten ohne Struktur
+            print(f"E3 K={K} h={h} N={X.shape[0]} -> levels {R.depth} (target {h})", flush=True)
+    # control for P3: i.i.d. data with no structure
     for N in (256, 1024):
         for s in seeds:
             rng = np.random.default_rng(s)
             X = normalize(rng.standard_normal((N, d)))
             R, log = grow_hierarchy(X, beta, seed=s)
-            rows.append({"data": f"i.i.d. Rauschen", "N": N, "true_levels": 1,
+            rows.append({"data": "iid noise", "N": N, "true_levels": 1,
                          "found_levels": R.depth, "seed": s, "log": log})
-            print(f"E3 iid N={N} -> Ebenen {R.depth} (Soll 1)", flush=True)
-        # i.i.d. in niedriger Dimension: Interferenz hoch, aber keine Struktur
+            print(f"E3 iid N={N} -> levels {R.depth} (target 1)", flush=True)
+        # i.i.d. in low dimension: high interference, but no structure
         for s in seeds:
             rng = np.random.default_rng(s)
             X = normalize(rng.standard_normal((N, 8)))
             R, log = grow_hierarchy(X, beta, seed=s)
-            rows.append({"data": "i.i.d. Rauschen d=8", "N": N, "true_levels": 1,
+            rows.append({"data": "iid noise d=8", "N": N, "true_levels": 1,
                          "found_levels": R.depth, "seed": s, "log": log})
-            print(f"E3 iid d=8 N={N} -> Ebenen {R.depth} (Soll 1)", flush=True)
+            print(f"E3 iid d=8 N={N} -> levels {R.depth} (target 1)", flush=True)
     return rows
 
 
 def exp_E6(seeds, d=64, beta=16,
            thetas=(0.0, 0.05, 0.1, 0.2, 0.3, 0.5, 0.7),
            gaps=(0.0, 0.05, 0.1, 0.15, 0.2, 0.3, 0.5)):
-    """Sensitivität der Wachstumsregel. Beide Schwellen entscheiden nur über den
-    Stopp; der Pfad bis dahin ist deterministisch. Daher: vollständigen Pfad
-    einmal berechnen (Schwellen aus), dann Tiefe für jede Kombination ableiten."""
-    datasets = [("Baum K=8,h=2", lambda r: make_tree(8, 2, d, r)[0], 2),
-                ("Baum K=6,h=3", lambda r: make_tree(6, 3, d, r)[0], 3),
-                ("Baum K=4,h=4", lambda r: make_tree(4, 4, d, r)[0], 4),
-                ("Baum K=3,h=5", lambda r: make_tree(3, 5, d, r)[0], 5),
+    """Sensitivity of the growth rule. Both thresholds decide only on the
+    stop; the path up to that point is deterministic. Therefore: compute the
+    full path once (thresholds off), then derive the depth for every
+    combination."""
+    datasets = [("tree K=8,h=2", lambda r: make_tree(8, 2, d, r)[0], 2),
+                ("tree K=6,h=3", lambda r: make_tree(6, 3, d, r)[0], 3),
+                ("tree K=4,h=4", lambda r: make_tree(4, 4, d, r)[0], 4),
+                ("tree K=3,h=5", lambda r: make_tree(3, 5, d, r)[0], 5),
                 ("iid d=64 N=256", lambda r: normalize(r.standard_normal((256, d))), 1),
                 ("iid d=64 N=1024", lambda r: normalize(r.standard_normal((1024, d))), 1),
                 ("iid d=8 N=1024", lambda r: normalize(r.standard_normal((1024, 8))), 1)]
@@ -453,7 +454,7 @@ def exp_E6(seeds, d=64, beta=16,
             _, log = grow_hierarchy(X, beta, seed=s, theta=-1.0, gap_margin=-1e9)
             path = [(e["interference"], e.get("gap", -np.inf)) for e in log if "gap" in e]
             paths.append({"data": name, "true_h": true_h, "seed": s, "path": path})
-            print(f"E6 {name} seed={s}: Pfad {[(round(i,2), round(g,2)) for i, g in path]}", flush=True)
+            print(f"E6 {name} seed={s}: path {[(round(i,2), round(g,2)) for i, g in path]}", flush=True)
     grid = []
     for th in thetas:
         for gm in gaps:
@@ -466,8 +467,8 @@ def exp_E6(seeds, d=64, beta=16,
                     else:
                         break
                 res.setdefault(p["data"], []).append((depth, p["true_h"]))
-            tree_err = np.mean([abs(dp - th_) for k, v in res.items() if k.startswith("Baum") for dp, th_ in v])
-            tree_exact = np.mean([dp == th_ for k, v in res.items() if k.startswith("Baum") for dp, th_ in v])
+            tree_err = np.mean([abs(dp - th_) for k, v in res.items() if k.startswith("tree") for dp, th_ in v])
+            tree_exact = np.mean([dp == th_ for k, v in res.items() if k.startswith("tree") for dp, th_ in v])
             iid_false = np.mean([dp > 1 for k, v in res.items() if k.startswith("iid") for dp, _ in v])
             grid.append({"theta": th, "gap": gm, "tree_abs_err": float(tree_err),
                          "tree_exact": float(tree_exact), "iid_false_growth": float(iid_false),
@@ -476,26 +477,26 @@ def exp_E6(seeds, d=64, beta=16,
 
 
 def exp_E4(seeds, d=64, K=8, h=3, fracs=(0.0, 0.25, 0.5, 0.75)):
-    """Vergessen in M0: vergessene Blätter werden beim Abruf durch ihren
-    Eltern-Prototyp ersetzt ('Gist'). Gemessen: mittlere Kosinus-Treue zum
-    wahren Blatt über alle Blätter."""
+    """Forgetting in M0: forgotten leaves are replaced at retrieval time by
+    their parent prototype ('gist'). Measured: mean cosine fidelity to the
+    true leaf, averaged over all leaves."""
     rows = []
     for s in seeds:
         rng = np.random.default_rng(s)
         X, _ = make_tree(K, h, d, rng, leaf_jitter=True)
         R = build_hierarchy_fixed(X, [K ** (h - 1), K ** (h - 2)], seed=s)
         P = R.levels[1].vecs[R.levels[0].parent]
-        recon = np.einsum("ij,ij->i", X, P)        # Kosinus Blatt vs. Prototyp
+        recon = np.einsum("ij,ij->i", X, P)        # cosine leaf vs. prototype
         for f in fracs:
             m = int(f * len(X))
-            by_rule = np.argsort(-recon)[:m]        # am besten rekonstruierbare zuerst
+            by_rule = np.argsort(-recon)[:m]        # best reconstructible first
             by_rand = rng.permutation(len(X))[:m]
-            for name, forg in (("Rekonstruktionsregel", by_rule), ("Zufall", by_rand)):
+            for name, forg in (("reconstruction_rule", by_rule), ("random", by_rand)):
                 fid = np.ones(len(X))
                 fid[forg] = recon[forg]
                 rows.append({"seed": s, "frac": f, "policy": name, "mean_fidelity": float(fid.mean()),
                              "min_fidelity": float(fid.min()), "storage_M0": 1 - f})
-        print(f"E4 seed={s} fertig", flush=True)
+        print(f"E4 seed={s} done", flush=True)
     return rows
 
 
@@ -519,4 +520,4 @@ if __name__ == "__main__":
     out["runtime_s"] = round(time.time() - t0, 1)
     with open(f"results_{which}.json", "w") as fh:
         json.dump(out, fh, indent=1, ensure_ascii=False)
-    print("fertig", out["runtime_s"], "s")
+    print("done", out["runtime_s"], "s")

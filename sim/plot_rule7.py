@@ -1,5 +1,5 @@
-"""Abbildung E8 (Regel 7, Anisotropie). Palette validiert (4 Farben, light);
-Aqua/Gelb < 3:1 Kontrast -> Direktbeschriftung + Markerformen."""
+"""Figure for E8 (rule 7, anisotropy). Palette validated (4 colors, light);
+Aqua/yellow < 3:1 contrast -> direct labeling + marker shapes."""
 import json, glob, collections
 import numpy as np
 import matplotlib
@@ -29,7 +29,7 @@ D = load("results_E8_drift_*.json")
 A = load("results_E8_aniso_*.json") + load("results_E8_gmeans_*.json")
 
 fig, axs = plt.subplots(2, 2, figsize=(11, 8.4))
-VC = {"Basis (1/n)": (BLUE, "o"), "gedeckelt": (ORANGE, "s"), "Regel 7 komplett": (AQUA, "^")}
+VC = {"baseline (1/n)": (BLUE, "o"), "capped": (ORANGE, "s"), "rule 7 complete": (AQUA, "^")}
 
 def drift_series(dl, v, f):
     rr = [r for r in D if r["delta"] == dl and r["variant"] == v]
@@ -39,22 +39,22 @@ def drift_series(dl, v, f):
 ax = axs[0, 0]
 for v, (c, mk) in VC.items():
     t, y = drift_series(0.3, v, "assoc"); ax.plot(t, y, color=c, marker=mk, ms=4)
-    lab(ax, t[-1], y[-1], v, {"Basis (1/n)": 6, "gedeckelt": -6, "Regel 7 komplett": 0}[v])
-t, y = drift_series(0.0, "Basis (1/n)", "assoc"); ax.plot(t, y, color=GRAY, ls="--", lw=1.5); lab(ax, t[-1], y[-1], "ohne Drift")
+    lab(ax, t[-1], y[-1], v, {"baseline (1/n)": 6, "capped": -6, "rule 7 complete": 0}[v])
+t, y = drift_series(0.0, "baseline (1/n)", "assoc"); ax.plot(t, y, color=GRAY, ls="--", lw=1.5); lab(ax, t[-1], y[-1], "no drift")
 ax.set_xlim(0, 28); ax.set_ylim(0, 1300)
-ax.set_xlabel("Episoden (Tausend), Driftschritt 0,3"); ax.set_ylabel("assoziativ (heiß) gespeicherte Vektoren")
-ax.set_title("A  Drift: Speicher", loc="left", fontweight="bold"); ax.grid(axis="y", color="#ecebe7", lw=0.8)
+ax.set_xlabel("episodes (thousands), drift step 0.3"); ax.set_ylabel("associatively (hot) stored vectors")
+ax.set_title("A  Drift: memory size", loc="left", fontweight="bold"); ax.grid(axis="y", color="#ecebe7", lw=0.8)
 
 ax = axs[0, 1]
 for v, (c, mk) in VC.items():
     t, y = drift_series(0.3, v, "acc_head"); ax.plot(t, y, color=c, marker=mk, ms=4)
-    lab(ax, t[-1], y[-1], v, {"Basis (1/n)": -4, "gedeckelt": 0, "Regel 7 komplett": 6}[v])
+    lab(ax, t[-1], y[-1], v, {"baseline (1/n)": -4, "capped": 0, "rule 7 complete": 6}[v])
 ax.set_xlim(0, 28); ax.set_ylim(0.75, 1.01)
-ax.set_xlabel("Episoden (Tausend), Driftschritt 0,3"); ax.set_ylabel("Top-1, häufige Konzepte")
-ax.set_title("B  Drift: Genauigkeit", loc="left", fontweight="bold"); ax.grid(axis="y", color="#ecebe7", lw=0.8)
+ax.set_xlabel("episodes (thousands), drift step 0.3"); ax.set_ylabel("top-1, frequent concepts")
+ax.set_title("B  Drift: accuracy", loc="left", fontweight="bold"); ax.grid(axis="y", color="#ecebe7", lw=0.8)
 
-AV = {"ohne Teilung": (BLUE, "o"), "Teilung, iso-Null": (ORANGE, "s"),
-      "Teilung, cov-Null": (AQUA, "^"), "Teilung, G-means": (YELLOW, "D")}
+AV = {"no split": (BLUE, "o"), "split, iso-null": (ORANGE, "s"),
+      "split, cov-null": (AQUA, "^"), "split, G-means": (YELLOW, "D")}
 
 def aniso(scale, v, f):
     g = collections.defaultdict(list)
@@ -64,31 +64,31 @@ def aniso(scale, v, f):
     xs = sorted(g); return np.array(xs), np.array([np.mean(g[x]) for x in xs])
 
 ax = axs[1, 0]
-dy = {"ohne Teilung": -8, "Teilung, iso-Null": 0, "Teilung, cov-Null": 0, "Teilung, G-means": 8}
-ypos = {"Teilung, iso-Null": None, "Teilung, cov-Null": 268, "Teilung, G-means": 243, "ohne Teilung": 218}
+dy = {"no split": -8, "split, iso-null": 0, "split, cov-null": 0, "split, G-means": 8}
+ypos = {"split, iso-null": None, "split, cov-null": 268, "split, G-means": 243, "no split": 218}
 for v, (c, mk) in AV.items():
     x, y = aniso(1.0, v, "n_proto")
     if len(x):
         ax.plot(x, y, color=c, marker=mk, ms=6)
         yy = y[-1] if ypos[v] is None else ypos[v]
         ax.annotate(v, (x[-1], y[-1]), xytext=(x[-1] + 0.35, yy), textcoords="data", color=INK, va="center", fontsize=9)
-x, y = aniso(1.0, "ohne Teilung", "covered"); ax.plot(x, y, color=GRAY, ls="--", lw=1.5)
-ax.text(x[-1] + 0.35, 192, "wahre Konzepte (erkannt)", color=INK2, va="center", fontsize=9)
+x, y = aniso(1.0, "no split", "covered"); ax.plot(x, y, color=GRAY, ls="--", lw=1.5)
+ax.text(x[-1] + 0.35, 192, "true concepts (recognized)", color=INK2, va="center", fontsize=9)
 ax.set_xlim(0.5, 12); ax.set_ylim(0, 430)
-ax.set_xlabel("Streckung α des Rauschens (1 = isotrop)"); ax.set_ylabel("aktive Prototypen")
-ax.set_title("C  Getrennte Konzepte: Über-Teilung?", loc="left", fontweight="bold"); ax.grid(axis="y", color="#ecebe7", lw=0.8)
+ax.set_xlabel("noise stretch α (1 = isotropic)"); ax.set_ylabel("active prototypes")
+ax.set_title("C  Separated concepts: over-splitting?", loc="left", fontweight="bold"); ax.grid(axis="y", color="#ecebe7", lw=0.8)
 
 ax = axs[1, 1]
-dy = {"ohne Teilung": -9, "Teilung, iso-Null": 4, "Teilung, cov-Null": 7, "Teilung, G-means": -4}
+dy = {"no split": -9, "split, iso-null": 4, "split, cov-null": 7, "split, G-means": -4}
 for v, (c, mk) in AV.items():
     x, y = aniso(0.6, v, "acc")
     if len(x):
         ax.plot(x, y, color=c, marker=mk, ms=6); lab(ax, x[-1], y[-1], v, dy[v])
 ax.set_xlim(0.5, 12); ax.set_ylim(0.9, 1.005)
-ax.set_xlabel("Streckung α des Rauschens (1 = isotrop)"); ax.set_ylabel("Konzept-Top-1")
-ax.set_title("D  Überlappende Konzepte: Genauigkeit", loc="left", fontweight="bold"); ax.grid(axis="y", color="#ecebe7", lw=0.8)
+ax.set_xlabel("noise stretch α (1 = isotropic)"); ax.set_ylabel("concept top-1")
+ax.set_title("D  Overlapping concepts: accuracy", loc="left", fontweight="bold"); ax.grid(axis="y", color="#ecebe7", lw=0.8)
 
-fig.suptitle("RHAM Runde 4 · Regel 7 unter Drift (A, B) und Teilungstest unter anisotropem Rauschen (C, D), 3 Seeds",
+fig.suptitle("RHAM round 4 · rule 7 under drift (A, B) and split test under anisotropic noise (C, D), 3 seeds",
              x=0.01, ha="left", color=INK, fontsize=12)
 fig.tight_layout(rect=(0, 0, 1, 0.96))
 fig.savefig("rham_runde4_ergebnisse.png", dpi=150)

@@ -1,91 +1,91 @@
 ---
-projekt: RHAM
+project: RHAM
 repo: https://github.com/6nhym5j2nk-design/rham-project
-stand: 2026-10-07
-tags: [rham, simulation, hopfield, ergebnisse]
-modus: VERIFY
+date: 2026-10-07
+tags: [rham, simulation, hopfield, results]
+mode: VERIFY
 ---
-# RHAM – Minimalsimulation, Ergebnisse (2026-10-07)
+# RHAM – Minimal Simulation, Results (2026-10-07)
 
-**Code:** `sim/rham_sim.py` (Experimente E1–E4), `sim/diag_routing.py`, `sim/diag_v3.py`, `sim/plot_results.py`. Rohdaten: `sim/results_*.json`, `sim/results_v3.txt`. Abbildung: `sim/rham_sim_ergebnisse.png`.
+**Code:** `sim/rham_sim.py` (experiments E1–E4), `sim/diag_routing.py`, `sim/diag_v3.py`, `sim/plot_results.py`. Raw data: `sim/results_*.json`, `sim/results_v3.txt`. Figure: `sim/rham_sim_ergebnisse.png`.
 
-**Setup:** Synthetische Baumdaten: Jedes Blatt ist die Summe zufälliger Einheitsvektoren entlang seines Pfads (Verzweigung $K$, Tiefe $h$, $d=64$), auf die Einheitssphäre normiert. Geschwister haben Kosinus $\approx (h-1)/h$, also stark korrelierte Muster (der realistische Fall). Abfragen sind verrauschte Blätter (Rauschnorm $\eta$). 5 Seeds × 300 Abfragen pro Bedingung. Flacher Speicher = ein Hopfield-Update-Schritt mit Softmax-Attention (Ramsauer et al. 2020). RHAM = gelernte Prototypen (k-Means) je Ebene, Top-down-Abruf mit Beam.
+**Setup:** Synthetic tree data: each leaf is the sum of random unit vectors along its path (branching $K$, depth $h$, $d=64$), normalized onto the unit sphere. Siblings have cosine $\approx (h-1)/h$, i.e. strongly correlated patterns (the realistic case). Queries are noisy leaves (noise norm $\eta$). 5 seeds × 300 queries per condition. Flat memory = one Hopfield update step with softmax attention (Ramsauer et al. 2020). RHAM = learned prototypes (k-means) per level, top-down retrieval with beam search.
 
-**Zwei Messgrößen** (erst im Verlauf getrennt, siehe Abschnitt 5):
-- *Top-1-Treffer*: richtiges Muster hat das höchste Gewicht.
-- *Scharfer Abruf*: Top-1 **und** Gewicht > 0,9 (Zustand ist zu einem einzelnen Muster konvergiert, kein Mischzustand).
+**Two metrics** (first treated separately, see Section 5):
+- *Top-1 hit*: the correct pattern has the highest weight.
+- *Sharp retrieval*: top-1 **and** weight > 0.9 (the state has converged onto a single pattern, no mixed state).
 
 ---
 
-## 1. Kernergebnisse
+## 1. Core results
 
-| # | Vorhersage (Machbarkeitsanalyse §10) | Ergebnis | Urteil |
+| # | Prediction (feasibility analysis §10) | Result | Verdict |
 |---|---|---|---|
-| P1 | RHAM hat bei gleichem Budget höhere Abrufkapazität | **Nur bei festem, begrenztem β.** Bei frei wählbarem β erreicht der flache Speicher die Nächster-Nachbar-Obergrenze; RHAM kann sie nicht übertreffen | **teilweise widerlegt, präzisiert** |
-| P2 | Ebenenzahl sättigt bei Datentiefe | Ebenen entstehen, **bis die Interferenz aufgelöst ist** – das ist ≤ Datentiefe (h=4: 4/4 exakt; h=5: 4 statt 5, weil die oberste Ebene keine Interferenz mehr hat) | **bestätigt, präzisiert** |
-| P3 | Bei Rauschdaten keine neue Ebene | 20/20 Läufe: keine Ebene. Interferenz allein hätte bei 15/20 fälschlich Ebenen erzeugt; der Struktur-Check (Gap-Statistik) verhindert das | **bestätigt** |
-| P4 | Grenzspeicher → Entropierate | nicht getestet | offen |
-| – | Selektives Vergessen nach Rekonstruierbarkeit ist besser als zufälliges | 50 % vergessen: mittlere Treue 0,949 vs. 0,897; schlechtester Fall 0,83 vs. 0,32 | **bestätigt** |
+| P1 | RHAM has higher retrieval capacity at the same budget | **Only at a fixed, bounded β.** With freely chosen β, the flat memory reaches the nearest-neighbor ceiling; RHAM cannot exceed it | **partially refuted, refined** |
+| P2 | Number of levels saturates at the data depth | Levels form **until interference is resolved** – that is ≤ data depth (h=4: 4/4 exact; h=5: 4 instead of 5, because the topmost level no longer has interference) | **confirmed, refined** |
+| P3 | No new level on noise data | 20/20 runs: no level. Interference alone would have wrongly created levels in 15/20; the structure check (gap statistic) prevents that | **confirmed** |
+| P4 | Marginal storage → entropy rate | not tested | open |
+| – | Selective forgetting by reconstructibility beats random forgetting | 50% forgotten: mean fidelity 0.949 vs. 0.897; worst case 0.83 vs. 0.32 | **confirmed** |
 
-## 2. E1 – Abruf vs. Speichergröße (Rauschen η = 0,35)
+## 2. E1 – Retrieval vs. memory size (noise η = 0.35)
 
-| N | NN-Obergrenze | flach β=16 scharf | RHAM β=16 scharf | flach Top-1 | RHAM Top-1 | Kosten flach | Kosten RHAM |
+| N | NN ceiling | flat β=16 sharp | RHAM β=16 sharp | flat top-1 | RHAM top-1 | cost flat | cost RHAM |
 |---|---|---|---|---|---|---|---|
-| 64 | 1,00 | 0,995 | 0,995 | 1,00 | 0,997 | 64 | 20 |
-| 512 | 1,00 | 0,845 | 0,967 | 1,00 | 0,997 | 512 | 40 |
-| 1000 | 1,00 | 0,679 | 0,979 | 1,00 | 0,997 | 1000 | 50 |
-| 4096 | 1,00 | **0,259** | **0,928** | 1,00 | 0,999 | 4096 | **81** |
+| 64 | 1.00 | 0.995 | 0.995 | 1.00 | 0.997 | 64 | 20 |
+| 512 | 1.00 | 0.845 | 0.967 | 1.00 | 0.997 | 512 | 40 |
+| 1000 | 1.00 | 0.679 | 0.979 | 1.00 | 0.997 | 1000 | 50 |
+| 4096 | 1.00 | **0.259** | **0.928** | 1.00 | 0.999 | 4096 | **81** |
 
-**Lesart:** Der flache Speicher wählt fast immer das richtige Muster, **konvergiert aber nicht scharf** – er bleibt bei festem β in einem metastabilen Mischzustand hängen (genau das von Ramsauer et al. beschriebene Regime bei korrelierten Mustern). RHAM ruft scharf ab und braucht dafür bei N = 4096 rund **50-mal weniger Skalarprodukte**; die Kosten wachsen ≈ logarithmisch. Mit frei wählbarem β (bis 256) erreicht auch der flache Speicher 100 % scharf – zum Preis eines sehr steilen Energiepotentials und linearer Kosten.
+**Reading:** The flat memory picks the correct pattern almost every time but **does not converge sharply** – at fixed β it gets stuck in a metastable mixed state (exactly the regime Ramsauer et al. describe for correlated patterns). RHAM retrieves sharply and, at N = 4096, needs roughly **50 times fewer dot products** to do so; cost grows ≈ logarithmically. With freely chosen β (up to 256), the flat memory also reaches 100% sharp – at the price of a very steep energy potential and linear cost.
 
-## 3. E1b/E1c – Rauschen und Beam-Breite (N = 1000)
+## 3. E1b/E1c – Noise and beam width (N = 1000)
 
-| η | NN-Obergrenze | RHAM v2 Top-1 (bestes β) | RHAM v3, Beam 1 | v3, Beam 2 | v3, Beam 4 |
+| η | NN ceiling | RHAM v2 top-1 (best β) | RHAM v3, beam 1 | v3, beam 2 | v3, beam 4 |
 |---|---|---|---|---|---|
-| 0,35 | 1,000 | 0,998 | 0,997 | 0,997 | 0,997 |
-| 1,0 | 0,995 | 0,973 | 0,954 | 0,973 | 0,978 |
-| 1,6 | 0,807 | 0,674 | 0,603 | 0,665 | 0,698 |
-| 2,0 | 0,550 | 0,417 | 0,368 | 0,439 | 0,453 |
+| 0.35 | 1.000 | 0.998 | 0.997 | 0.997 | 0.997 |
+| 1.0 | 0.995 | 0.973 | 0.954 | 0.973 | 0.978 |
+| 1.6 | 0.807 | 0.674 | 0.603 | 0.665 | 0.698 |
+| 2.0 | 0.550 | 0.417 | 0.368 | 0.439 | 0.453 |
 
-**Lesart:** Bei starkem Rauschen verliert RHAM gegenüber dem exakten Nächster-Nachbar-Vergleich (bis ≈ 10 Prozentpunkte). Das ist **kein Implementierungsdetail, sondern prinzipiell**: Eine Hierarchie trifft frühe, grobe Entscheidungen auf verrauschter Information und kann einen vollständigen Vergleich nur annähern, nie übertreffen. Breiterer Beam verkleinert die Lücke (Kosten linear im Beam).
+**Reading:** Under strong noise, RHAM loses ground relative to the exact nearest-neighbor comparison (up to ≈ 10 percentage points). This is **not an implementation detail but fundamental**: a hierarchy makes early, coarse decisions on noisy information and can only approximate a full comparison, never exceed it. A wider beam narrows the gap (cost grows linearly in the beam).
 
-## 4. E3 – Automatisches Ebenenwachstum
+## 4. E3 – Automatic level growth
 
-Regel: neue Ebene, wenn Interferenz $I(M_n) > 0{,}2$ (Anteil Muster mit Ramsauer-Fehlerschranke $>0{,}05$) **und** Gap-Statistik > 0,15 (Tibshirani, Walther & Hastie 2001, *JRSS B*; Nullmodell: gleichverteilt auf der Sphäre).
+Rule: new level when interference $I(M_n) > 0.2$ (fraction of patterns with Ramsauer error bound $>0.05$) **and** gap statistic > 0.15 (Tibshirani, Walther & Hastie 2001, *JRSS B*; null model: uniform on the sphere).
 
-| Daten | N | Soll | gefunden (5 Seeds) |
+| Data | N | target | found (5 seeds) |
 |---|---|---|---|
-| Baum K=8, h=2 | 64 | 2 | 2, 3, 3, 2, 2 |
-| Baum K=6, h=3 | 216 | 3 | 3, 4, 3, 3, 4 |
-| Baum K=4, h=4 | 256 | 4 | 4, 4, 4, 4, 4 |
-| Baum K=3, h=5 | 243 | 5 | 4, 4, 4, 4, 4 |
-| i.i.d., d=64 | 256 / 1024 | 1 | alle 1 |
-| i.i.d., d=8 | 256 / 1024 | 1 | alle 1 |
+| Tree K=8, h=2 | 64 | 2 | 2, 3, 3, 2, 2 |
+| Tree K=6, h=3 | 216 | 3 | 3, 4, 3, 3, 4 |
+| Tree K=4, h=4 | 256 | 4 | 4, 4, 4, 4, 4 |
+| Tree K=3, h=5 | 243 | 5 | 4, 4, 4, 4, 4 |
+| i.i.d., d=64 | 256 / 1024 | 1 | all 1 |
+| i.i.d., d=8 | 256 / 1024 | 1 | all 1 |
 
-**Lesart:** (a) Die Regel baut Ebenen, **solange sie gebraucht werden**, nicht so viele, wie die Daten „hätten“: Bei h = 5 sind die 9 Prototypen der dritten Ebene schon gut separiert, eine weitere Ebene wäre nutzlos. (b) Gelegentliche Über-Segmentierung (+1 Ebene) entsteht, wenn k-Means eine leicht falsche Clusterzahl wählt (Gitter der Kandidaten; z. B. 12 statt 8). (c) **Interferenz allein ist als Trigger unzureichend**: i.i.d.-Daten in niedriger Dimension oder großer Zahl haben Interferenz ≈ 1, aber keine Struktur. Der Struktur-Check ist notwendig (bestätigt Red-Team-Punkt 4 der Machbarkeitsanalyse).
+**Reading:** (a) The rule builds levels **for as long as they are needed**, not as many as the data "would warrant": at h = 5, the 9 prototypes of the third level are already well separated, so a further level would be useless. (b) Occasional over-segmentation (+1 level) arises when k-means picks a slightly wrong number of clusters (candidate grid; e.g. 12 instead of 8). (c) **Interference alone is an insufficient trigger**: i.i.d. data in low dimension or large N has interference ≈ 1 but no structure. The structure check is necessary (confirms red-team point 4 of the feasibility analysis).
 
-## 5. Methodische Befunde während der Simulation
+## 5. Methodological findings during the simulation
 
-1. **Bug: NaN-Schlüssel** bei Ein-Element-Clustern (Residuum = 0 → Division durch null). Entdeckt über RuntimeWarnings im Log und auffällige Ausreißer bei K = 4 (88 %). Behoben durch sichere Normierung; Ausreißer verschwanden (98–100 %).
-2. **Designfehler v1: gemeinsame Softmax über Residuen verschiedener Eltern.** Entdeckt, weil ein breiterer Beam die Genauigkeit *senkte* (0,59 → 0,42 bei η = 1,6). Diagnose (`diag_routing.py`): Das Routing allein war nicht der Engpass. Ursache: normierte Residuen relativ zu *verschiedenen* Prototypen sind nicht vergleichbar. Lösung v2: **hierarchische Softmax** (Normierung je Geschwistergruppe, Pfadwahrscheinlichkeiten multipliziert).
-3. **Messartefakt: Schärfe ≠ Treffer.** v2 schien schlechter, weil die multiplizierten Pfadwahrscheinlichkeiten bei Unsicherheit ehrlich unter 0,9 fallen. Daher Trennung von Top-1 und scharfem Abruf. v2 ist **kalibrierter**, nicht schlechter.
-4. **Rauschverstärkung im Residuenraum.** Der eigene Raum pro Ebene ($q-p$ normiert) verstärkt Rauschen um $\|x\|/\|x-p\|$. Lösung v3: Routing im Residuenraum, Endschritt mit exakter Zerlegung $q\cdot x = q\cdot p + q\cdot(x-p)$. v3 ist das empfohlene Design: Beam hilft monoton, Top-1 = scharfer Abruf.
+1. **Bug: NaN keys** for singleton clusters (residual = 0 → division by zero). Discovered via RuntimeWarnings in the log and conspicuous outliers at K = 4 (88%). Fixed through safe normalization; outliers disappeared (98–100%).
+2. **Design flaw v1: shared softmax over residuals from different parents.** Discovered because a wider beam *lowered* accuracy (0.59 → 0.42 at η = 1.6). Diagnosis (`diag_routing.py`): routing alone was not the bottleneck. Cause: residuals normalized relative to *different* prototypes are not comparable. Fix v2: **hierarchical softmax** (normalization per sibling group, path probabilities multiplied).
+3. **Measurement artifact: sharpness ≠ hit.** v2 appeared worse because the multiplied path probabilities honestly fall below 0.9 under uncertainty. Hence the separation of top-1 and sharp retrieval. v2 is **better calibrated**, not worse.
+4. **Noise amplification in residual space.** The per-level own space ($q-p$ normalized) amplifies noise by $\|x\|/\|x-p\|$. Fix v3: routing in residual space, final step with exact decomposition $q\cdot x = q\cdot p + q\cdot(x-p)$. v3 is the recommended design: beam helps monotonically, top-1 = sharp retrieval.
 
-## 6. Konsequenzen für die RHAM-Hypothese
+## 6. Consequences for the RHAM hypothesis
 
-- **Korrektur der Kernthese:** Der Vorteil der Hierarchie ist **nicht** höhere Kapazität im Sinne „mehr richtig abrufbare Muster“ – mit unbegrenztem β und unbegrenzter Rechenzeit ist der flache Speicher gleich gut oder besser. Der Vorteil ist (a) **scharfer, stabiler Abruf bei begrenzter Inverstemperatur** (realistisch für trainierbare Systeme und Hardware mit begrenzter Dynamik) und (b) **logarithmische statt linearer Abrufkosten**. Das passt zur Machbarkeitsanalyse §7: Das Hauptargument ist Energie pro Abruf, nicht Speichermenge.
-- **Preis:** Bei sehr verrauschten Hinweisreizen geht Genauigkeit verloren. Biologisch plausibel (schwacher Cue → falscher „Ordner“), technisch per Beam-Breite regelbar.
-- **Wachstumsregel:** Zwei-Kriterien-Trigger (Interferenz + Struktur) funktioniert und erzeugt die *benötigte*, nicht die maximale Tiefe.
-- **Vergessen:** Rekonstruktionsregel ist klar besser als Zufall. In Verbindung mit dem Drei-Schichten-Modell (Archiv hält Rohdaten) ist der Treueverlust nur ein Verlust an direktem assoziativem Zugang.
+- **Correction of the core thesis:** The hierarchy's advantage is **not** higher capacity in the sense of "more correctly retrievable patterns" – with unbounded β and unbounded compute, the flat memory is equally good or better. The advantage is (a) **sharp, stable retrieval at bounded inverse temperature** (realistic for trainable systems and hardware with limited dynamic range) and (b) **logarithmic instead of linear retrieval cost**. This matches feasibility analysis §7: the main argument is energy per retrieval, not storage amount.
+- **Price:** Under very noisy cues, accuracy is lost. Biologically plausible (weak cue → wrong "folder"), technically controllable via beam width.
+- **Growth rule:** The two-criterion trigger (interference + structure) works and produces the *needed*, not the maximum, depth.
+- **Forgetting:** The reconstruction rule is clearly better than random. Combined with the three-layer model (the archive retains raw data), the loss of fidelity is only a loss of direct associative access.
 
-## 7. Grenzen dieser Simulation
+## 7. Limitations of this simulation
 
-Synthetische, perfekt hierarchische Daten mit isotropem Rauschen; nur ein Hopfield-Schritt; Prototypen per k-Means statt gelernt; feste Clusterzahl in E1 (Orakel), automatische nur in E3; keine echten Daten (Text-/Bild-Embeddings); P4 nicht getestet; Hyperparameter (θ = 0,2, Gap-Schwelle 0,15) nicht systematisch variiert. Ergebnisse sind Machbarkeitsevidenz, kein Leistungsnachweis.
+Synthetic, perfectly hierarchical data with isotropic noise; only one Hopfield step; prototypes via k-means instead of learned; fixed cluster count in E1 (oracle), automatic only in E3; no real data (text/image embeddings); P4 not tested; hyperparameters (θ = 0.2, gap threshold 0.15) not systematically varied. Results are feasibility evidence, not a performance proof.
 
-## 8. Nächste Schritte
+## 8. Next steps
 
-1. v3 in `rham_sim.py` als Standard übernehmen und E1/E1b damit komplett neu rechnen.
-2. Echte Embeddings (z. B. Satz- oder Bild-Embeddings eines öffentlichen Datensatzes) statt synthetischer Bäume.
-3. Online-Betrieb: Episoden einzeln einspeisen, Wachstum und Vergessen im laufenden Strom; P4 messen.
-4. Sensitivitätsanalyse für θ, Gap-Schwelle, Beam.
-5. Unabhängiges Code-Review (Skill „code-reviewen-und-sandboxen“) vor jeder Publikation.
+1. Adopt v3 as the default in `rham_sim.py` and fully recompute E1/E1b with it.
+2. Real embeddings (e.g. sentence or image embeddings from a public dataset) instead of synthetic trees.
+3. Online operation: feed episodes one at a time, growth and forgetting in a running stream; measure P4.
+4. Sensitivity analysis for θ, gap threshold, beam.
+5. Independent code review (skill "code-review-and-sandbox") before any publication.

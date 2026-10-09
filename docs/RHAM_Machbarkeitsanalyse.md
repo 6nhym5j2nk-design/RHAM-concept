@@ -1,179 +1,179 @@
 ---
-projekt: RHAM
+project: RHAM
 repo: https://github.com/6nhym5j2nk-design/rham-project
-stand: 2026-10-07
-tags: [rham, associative-memory, hopfield, kapazität, thermodynamik, machbarkeit]
-modus: VERIFY
+date: 2026-10-07
+tags: [rham, associative-memory, hopfield, capacity, thermodynamics, feasibility]
+mode: VERIFY
 ---
-# RHAM – Mathematisch-physikalische Machbarkeitsanalyse
+# RHAM – Mathematical-Physical Feasibility Analysis
 
-**Frage:** Ist eine *Recursive Hierarchical Associative Memory* (RHAM) – assoziativer Q/K/V-Speicher, dessen Ebenentiefe interferenzgetriggert wächst, mit Offline-Konsolidierung und selektivem Vergessen – mathematisch und physikalisch möglich?
+**Question:** Is a *Recursive Hierarchical Associative Memory* (RHAM) – an associative Q/K/V memory whose level depth grows when triggered by interference, with offline consolidation and selective forgetting – mathematically and physically possible?
 
-**Kurzantwort:** Ja, mit drei präzisen Einschränkungen.
+**Short answer:** Yes, with three precise caveats.
 
-1. **Mathematisch möglich.** Jeder Baustein hat heute eine bewiesene Grundlage: exponentielle Kapazität dichter assoziativer Speicher (Ramsauer 2020, Hu/Wu/Liu 2024), Lyapunov-stabile mehrschichtige Hopfield-Netze (Krotov 2021), Prototypen-Emergenz *aus Interferenz* (Cowsik & Sriram 2026), bedarfsgesteuertes Wachstum assoziativer Speicher (Self-Sizing Hopfield 2025). Die Kombination ist konsistent; es gibt keinen Satz, der sie verbietet.
-2. **Die Kapazität wird nicht exponentiell – die Adressierbarkeit schon.** Informationstheoretisch gilt: gespeicherte Bits ≤ Parameter × Bits/Parameter (Shannon). Die Hierarchie erzeugt mit $L$ Ebenen à $K$ Prototypen bis zu $K^L$ adressierbare Kombinationen bei nur $L\cdot K$ gespeicherten Prototypen. Das ist der formale Gehalt von „exponentiell“: *kombinatorische Adressierbarkeit*, nicht Informationsgehalt. Der reale Gewinn pro Erfahrung ist exakt die **Kompressibilität des Erfahrungsstroms** (Entropierate $h$ vs. Rohgröße $b$) – bei inkompressibler Erfahrung bringt RHAM nichts.
-3. **Physikalisch möglich, und das Vergessen ist der einzige thermodynamisch zwingende Kostenpunkt.** Landauer: Löschen eines Bits kostet mindestens $k_BT\ln 2 \approx 2{,}9\cdot10^{-21}$ J bei 300 K (experimentell bestätigt, Bérut et al. 2012). Still et al. 2012 zeigen: ein System, das nicht-prädiktive Information behält, dissipiert genau diese Information als Wärme. **Selektives Vergessen ist also nicht nur erlaubt, sondern thermodynamisch optimal** – ein starkes physikalisches Argument für Regel 5 der RHAM.
+1. **Mathematically possible.** Every building block has a proven foundation today: exponential capacity of dense associative memories (Ramsauer 2020, Hu/Wu/Liu 2024), Lyapunov-stable multi-layer Hopfield networks (Krotov 2021), prototype emergence *from interference* (Cowsik & Sriram 2026), demand-driven growth of associative memories (Self-Sizing Hopfield 2025). The combination is consistent; there is no theorem that forbids it.
+2. **The capacity does not become exponential – the addressability does.** Information-theoretically: stored bits ≤ parameters × bits/parameter (Shannon). The hierarchy, with $L$ levels of $K$ prototypes each, produces up to $K^L$ addressable combinations while storing only $L\cdot K$ prototypes. That is the formal content of "exponential": *combinatorial addressability*, not information content. The real gain per experience is exactly the **compressibility of the experience stream** (entropy rate $h$ vs. raw size $b$) – for incompressible experience, RHAM buys nothing.
+3. **Physically possible, and forgetting is the only thermodynamically mandatory cost.** Landauer: erasing one bit costs at least $k_BT\ln 2 \approx 2.9\cdot10^{-21}$ J at 300 K (experimentally confirmed, Bérut et al. 2012). Still et al. 2012 show: a system that retains non-predictive information dissipates exactly that information as heat. **Selective forgetting is therefore not merely permitted but thermodynamically optimal** – a strong physical argument for Rule 5 of RHAM.
 
-Die eigentliche Neuheit bleibt eng: die *dynamisch wachsende Abstraktionstiefe* plus *hierarchische Top-down-Adressierung*. Beides ist bisher nur in Teilen vorhanden (Abschnitt 9). Die Tiefe wächst dabei nicht unbegrenzt, sondern nach derzeitigem Stand höchstens **logarithmisch** in der Zahl der Episoden (Abschnitt 5).
+The actual novelty remains narrow: *dynamically growing abstraction depth* plus *hierarchical top-down addressing*. Both exist so far only in parts (Section 9). The depth does not grow without bound; on current evidence it grows at most **logarithmically** with the number of episodes (Section 5).
 
 ---
 
-## 1. Formalisierung
+## 1. Formalization
 
-Sei $\mathcal{E}=(e_1,e_2,\dots)$ ein Strom von Erfahrungen, $e_t\in\mathbb{R}^{b}$ (Rohgröße $b$ Bits).
+Let $\mathcal{E}=(e_1,e_2,\dots)$ be a stream of experiences, $e_t\in\mathbb{R}^{b}$ (raw size $b$ bits).
 
-**Ebene $n$:** $M_n=\{(k_i^{(n)},v_i^{(n)})\}_{i=1}^{N_n}$, Schlüssel $k\in\mathbb{R}^{d_n}$.
+**Level $n$:** $M_n=\{(k_i^{(n)},v_i^{(n)})\}_{i=1}^{N_n}$, keys $k\in\mathbb{R}^{d_n}$.
 
-**Abruf (assoziativ):**
+**Retrieval (associative):**
 $$r_n(q)=\sum_i \operatorname{softmax}_i\!\big(\beta\,q^\top k_i^{(n)}\big)\,v_i^{(n)}.$$
 
-**Interferenz einer Ebene:** Mit Separation $\Delta_i = k_i^\top k_i-\max_{j\neq i}k_i^\top k_j$ (Ramsauer et al. 2020) definieren wir
+**Interference of a level:** With separation $\Delta_i = k_i^\top k_i-\max_{j\neq i}k_i^\top k_j$ (Ramsauer et al. 2020) we define
 $$I(M_n)=\frac{1}{N_n}\big|\{i:\ 2(N_n-1)\,e^{-\beta\Delta_i}\,>\,\varepsilon\}\big|,$$
-den Anteil der Muster, deren garantierte Abruffehlerschranke $\varepsilon$ überschreitet. $I$ ist online berechenbar (nur Skalarprodukte).
+the fraction of patterns whose guaranteed retrieval error bound exceeds $\varepsilon$. $I$ is computable online (only dot products).
 
-**Wachstumsregel:** $I(M_n)>\theta_n \Rightarrow$ erzeuge $M_{n+1}$.
+**Growth rule:** $I(M_n)>\theta_n \Rightarrow$ create $M_{n+1}$.
 
-**Konsolidierungsoperator:** $M_{n+1}\leftarrow C(M_n)$ mit $C$ = Clustering/Prototypenbildung, so dass $k_i^{(n)}\approx p_{c(i)}^{(n+1)}+\rho_i^{(n)}$ (Prototyp plus Residuum).
+**Consolidation operator:** $M_{n+1}\leftarrow C(M_n)$ with $C$ = clustering/prototype formation, such that $k_i^{(n)}\approx p_{c(i)}^{(n+1)}+\rho_i^{(n)}$ (prototype plus residual).
 
-**Selektives Vergessen:** entferne $(k_i,v_i)$ aus $M_n$, wenn Rekonstruktion aus $M_{n+1}$ hinreichend gut: $\|v_i - \hat v_i(M_{n+1})\|<\delta$.
+**Selective forgetting:** remove $(k_i,v_i)$ from $M_n$ when reconstruction from $M_{n+1}$ is sufficiently good: $\|v_i - \hat v_i(M_{n+1})\|<\delta$.
 
-**Zyklus:** Erfahrung → $M_0$ → Interferenz → Konsolidierung → neue Ebene → Kompression → Vergessen.
+**Cycle:** Experience → $M_0$ → interference → consolidation → new level → compression → forgetting.
 
 ---
 
-## 2. Kapazität einer einzelnen Ebene – was bewiesen ist
+## 2. Capacity of a single level – what is proven
 
-| Modell | Kapazität | Bedingung | Quelle (Status) |
+| Model | Capacity | Condition | Source (status) |
 |---|---|---|---|
-| Klassischer Hopfield | $\approx 0{,}138\,N$ | zufällige Muster | Amit/Gutfreund/Sompolinsky 1985 (peer-reviewed, Standard) |
-| Dense AM, Exponentialkopplung | $\propto e^{\alpha N}$ | zufällige Muster | Demircigil et al. 2017, J. Stat. Phys. (peer-reviewed) |
-| Modern Hopfield = Attention | $N\ge\sqrt p\,c^{(d-1)/4}$, exponentiell in $d$ | Muster auf Sphäre, Separation $\Delta_i$ groß | Ramsauer et al. 2020/ICLR 2021 (peer-reviewed) |
-| Kernelized Hopfield | $M^\star\asymp c^{D_\Phi}$ optimal, wenn Speicher einen optimalen sphärischen Code bilden | $\Delta\ge\frac1\beta\ln\frac{2(M-1)}{R}$ | Hu, Wu, Liu 2024 (arXiv; Preprint) |
-| Biologisch plausibler Dense AM | exponentiell in Zahl der Hidden Units durch verteilte (kompositionelle) Repräsentation | Threshold-Nichtlinearität | Shafiei Kafraj, Krotov, Latham 2026 (arXiv; Preprint) |
+| Classical Hopfield | $\approx 0.138\,N$ | random patterns | Amit/Gutfreund/Sompolinsky 1985 (peer-reviewed, standard) |
+| Dense AM, exponential coupling | $\propto e^{\alpha N}$ | random patterns | Demircigil et al. 2017, J. Stat. Phys. (peer-reviewed) |
+| Modern Hopfield = attention | $N\ge\sqrt p\,c^{(d-1)/4}$, exponential in $d$ | patterns on sphere, large separation $\Delta_i$ | Ramsauer et al. 2020/ICLR 2021 (peer-reviewed) |
+| Kernelized Hopfield | $M^\star\asymp c^{D_\Phi}$ optimal, when memories form an optimal spherical code | $\Delta\ge\frac1\beta\ln\frac{2(M-1)}{R}$ | Hu, Wu, Liu 2024 (arXiv; preprint) |
+| Biologically plausible dense AM | exponential in number of hidden units via distributed (compositional) representation | threshold nonlinearity | Shafiei Kafraj, Krotov, Latham 2026 (arXiv; preprint) |
 
-**Entscheidende Einsicht:** Die exponentielle Kapazität gilt nur für *gut separierte* Muster. Reale Erfahrungen sind korreliert; $\Delta_i$ wird klein, die Fehlerschranke $2(N-1)e^{-\beta\Delta_i}$ explodiert. Interferenz ist also nicht ein Randphänomen, sondern der **Normalfall** bei strukturierten Daten. Genau das macht $I(M_n)$ zu einem sinnvollen Wachstumstrigger.
+**Decisive insight:** Exponential capacity holds only for *well-separated* patterns. Real experiences are correlated; $\Delta_i$ becomes small, and the error bound $2(N-1)e^{-\beta\Delta_i}$ explodes. Interference is therefore not a marginal phenomenon but the **normal case** for structured data. That is precisely what makes $I(M_n)$ a sensible growth trigger.
 
-Zudem gilt: Softmax-Attention approximiert Kanervas *Sparse Distributed Memory* (Bricken & Pehlevan, NeurIPS 2021), d. h. die Q/K/V-Formulierung ist nicht nur eine Transformer-Konvention, sondern ein etabliertes biologisch plausibles assoziatives Speichermodell.
-
----
-
-## 3. Warum eine Hierarchie die Kapazität „rettet“ (Beweisskizze)
-
-Seien die Schlüssel in $M_0$ in $K$ Clustern korreliert: $k_i=p_{c(i)}+\rho_i$, mit Prototypen $p_c$ und Residuen $\rho_i$, $\|\rho_i\|\ll\|p_c\|$.
-
-Flache Separation: $\Delta_i^{\text{flach}} \approx \|\rho_i\|^2-\max_{j\ne i,\,c(j)=c(i)}\rho_i^\top\rho_j + \text{(Cluster-Term, klein)}$ – dominiert von Intra-Cluster-Überlappung, mit $N_0$ wachsend schlechter.
-
-Nach Konsolidierung speichert $M_1$ die $K$ Prototypen (gut separiert, Fehlerschranke $\propto K$ statt $N_0$) und $M_0$ nur noch Residuen *relativ zum Prototyp*. Innerhalb eines Clusters $c$ konkurrieren nur $N_c\approx N_0/K$ Muster, und die Residuen sind nach Zentrierung nahezu isotrop → Separation nähert sich dem Zufallsfall → Ramsauer-Regime gilt wieder.
-
-**Kapazitätsrechnung:** Mit $L$ Ebenen und je $K$ Prototypen pro Knoten sind
-$$\#\text{adressierbare Kombinationen}=K^L,\qquad \#\text{gespeicherte Prototypen}=L\cdot K .$$
-Das ist identisch mit *Residual-/Produkt-Quantisierung* (Chen et al. 2010; Jégou et al. 2011, IEEE TPAMI) und *HNSW* (Malkov & Yashunin 2018, IEEE TPAMI) für die logarithmische Suche. Die RHAM-Hierarchie ist mathematisch deren **gelernte, verteilte** Variante.
-
-**Konvergenz:** Mehrschichtige Hopfield-Netze mit symmetrischen Gewichten besitzen eine Lyapunov-Energie $E$ mit $dE/dt\le0$ (Krotov, *Hierarchical Associative Memory*, 2021). Jede RHAM-Ebene kann als solche Schicht realisiert werden; die Stabilität der Abrufdynamik ist damit garantiert, solange Vorwärts- und Rückwärtsgewichte symmetrisch gehalten werden (Einschränkung, siehe Abschnitt 8).
-
-**Prototypen entstehen von selbst aus Interferenz:** Cowsik & Sriram (Stanford, Sept. 2026) zeigen, dass dichte Hopfield-Netze, in denen nur Blattmuster gespeichert werden, die *Vorfahren-Prototypen* als stabile Minima der Energielandschaft ausbilden – ausgelöst durch die Interferenz der Blattmuster. Mit $N^{\Theta(\log N)}$ Beispielen lassen sich Prototypen bis Tiefe $\log N$ rekonstruieren (Theorem 6: Instabilitätswahrscheinlichkeit der Vorfahren verschwindet bei geeigneter Skalierung). Das ist die bislang stärkste Evidenz, dass „Interferenz → Abstraktion“ kein bloßes Bild, sondern ein physikalischer Mechanismus in Energielandschaften ist. **Aber:** dort ist die Tiefe $h$ vorgegeben; nichts wächst.
+In addition: softmax attention approximates Kanerva's *Sparse Distributed Memory* (Bricken & Pehlevan, NeurIPS 2021), i.e. the Q/K/V formulation is not merely a transformer convention but an established, biologically plausible associative memory model.
 
 ---
 
-## 4. Die informationstheoretische Grenze – was „exponentiell“ bedeutet und was nicht
+## 3. Why a hierarchy "rescues" capacity (proof sketch)
 
-**Harte Grenze:** Ein System mit $P$ Parametern à $q$ Bits speichert höchstens $P\cdot q$ Bits. Keine Hierarchie umgeht das.
+Let the keys in $M_0$ be correlated within $K$ clusters: $k_i=p_{c(i)}+\rho_i$, with prototypes $p_c$ and residuals $\rho_i$, $\|\rho_i\|\ll\|p_c\|$.
 
-**Quellencodierung:** Hat der Erfahrungsstrom die Entropierate $h$ Bits/Erfahrung, so braucht jede verlustfreie Speicherung von $T$ Erfahrungen mindestens $T\cdot h$ Bits (Shannon). Rohspeicherung braucht $T\cdot b$. Der maximale Gewinn der RHAM ist der Faktor
+Flat separation: $\Delta_i^{\text{flat}} \approx \|\rho_i\|^2-\max_{j\ne i,\,c(j)=c(i)}\rho_i^\top\rho_j + \text{(cluster term, small)}$ – dominated by intra-cluster overlap, worsening as $N_0$ grows.
+
+After consolidation, $M_1$ stores the $K$ prototypes (well separated, error bound $\propto K$ instead of $N_0$) and $M_0$ stores only residuals *relative to the prototype*. Within a cluster $c$, only $N_c\approx N_0/K$ patterns compete, and after centering the residuals are nearly isotropic → separation approaches the random case → the Ramsauer regime holds again.
+
+**Capacity calculation:** With $L$ levels and $K$ prototypes per node,
+$$\#\text{addressable combinations}=K^L,\qquad \#\text{stored prototypes}=L\cdot K .$$
+This is identical to *residual/product quantization* (Chen et al. 2010; Jégou et al. 2011, IEEE TPAMI) and *HNSW* (Malkov & Yashunin 2018, IEEE TPAMI) for logarithmic search. The RHAM hierarchy is mathematically their **learned, distributed** variant.
+
+**Convergence:** Multi-layer Hopfield networks with symmetric weights possess a Lyapunov energy $E$ with $dE/dt\le0$ (Krotov, *Hierarchical Associative Memory*, 2021). Each RHAM level can be realized as such a layer; the stability of the retrieval dynamics is thereby guaranteed, as long as forward and backward weights are kept symmetric (a restriction – see Section 8).
+
+**Prototypes emerge spontaneously from interference:** Cowsik & Sriram (Stanford, Sept. 2026) show that dense Hopfield networks, in which only leaf patterns are stored, form the *ancestor prototypes* as stable minima of the energy landscape – triggered by the interference of the leaf patterns. With $N^{\Theta(\log N)}$ examples, prototypes can be reconstructed down to depth $\log N$ (Theorem 6: the instability probability of the ancestors vanishes under suitable scaling). This is the strongest evidence to date that "interference → abstraction" is not merely a metaphor but a physical mechanism in energy landscapes. **But:** there the depth $h$ is fixed in advance; nothing grows.
+
+---
+
+## 4. The information-theoretic limit – what "exponential" does and does not mean
+
+**Hard limit:** A system with $P$ parameters of $q$ bits each stores at most $P\cdot q$ bits. No hierarchy circumvents this.
+
+**Source coding:** If the experience stream has entropy rate $h$ bits/experience, any lossless storage of $T$ experiences needs at least $T\cdot h$ bits (Shannon). Raw storage needs $T\cdot b$. RHAM's maximum gain is the factor
 $$G=\frac{b}{h}.$$
-Bei stark strukturierter Erfahrung ($h\ll b$) ist $G$ groß; bei Rauschen ($h\approx b$) ist $G\approx1$ – die Hierarchie kostet dann nur.
+For strongly structured experience ($h\ll b$), $G$ is large; for noise ($h\approx b$), $G\approx1$ – the hierarchy then only costs.
 
-**Was sich tatsächlich stark ändert, ist der Grenzspeicher pro Erfahrung:**
+**What actually changes substantially is the marginal storage per experience:**
 $$\frac{dS}{dT}\ \xrightarrow{T\to\infty}\ h \ll b .$$
-Das ist die präzise Fassung der These „mehr Erfahrung → weniger zusätzlicher Speicher pro Erfahrung“: Sie ist wahr genau dann, wenn Erfahrungen *bedingt* auf das bereits gelernte Weltmodell wenig neue Entropie tragen. RHAM ist damit ein **Online-MDL-System**: Die Ebenen $M_1,\dots,M_L$ sind der Modellteil eines Zwei-Teile-Codes, $M_0$ der Datenteil.
+This is the precise formulation of the thesis "more experience → less additional storage per experience": it is true exactly when experiences carry little new entropy *conditional on* the already learned world model. RHAM is thus an **online MDL system**: levels $M_1,\dots,M_L$ are the model part of a two-part code, $M_0$ the data part.
 
-**Kombinatorische Adressierbarkeit:** $K^L$ Kombinationen sind *repräsentierbar*, nicht *gespeichert*. Das ist exakt der Unterschied, den auch das Gehirn nutzt (verteilte Repräsentation). Er ist real und wertvoll (Generalisierung, Kompositionalität), aber er ist keine Speicherkapazität im Shannon-Sinne.
+**Combinatorial addressability:** $K^L$ combinations are *representable*, not *stored*. That is exactly the distinction the brain also exploits (distributed representation). It is real and valuable (generalization, compositionality), but it is not storage capacity in the Shannon sense.
 
 ---
 
-## 5. Dynamisches Wachstum – mathematisch unproblematisch, aber mit natürlicher Obergrenze
+## 5. Dynamic growth – mathematically unproblematic, but with a natural ceiling
 
-Wachstum neuronaler Strukturen bei Kapazitätsbedarf ist etabliert: Cascade-Correlation (Fahlman & Lebiere 1990), Growing Neural Gas (Fritzke 1995), Progressive Networks (Rusu et al. 2016), Dynamically Expandable Networks (Yoon et al., ICLR 2018). Für assoziative Speicher speziell: *Self-Sizing Hopfield* (arXiv 2507.10443, 2025) wächst „nur bei echter Neuheit“ bis zur intrinsischen Speicheranforderung der Umgebung (geschätzt über Urysohn-Breite) – ohne Vorgabe und ohne Validierungssuche. **Aber:** dort wächst die *Breite* einer Ebene, keine *Abstraktionsebene*.
+Growth of neural structures under capacity demand is well established: Cascade-Correlation (Fahlman & Lebiere 1990), Growing Neural Gas (Fritzke 1995), Progressive Networks (Rusu et al. 2016), Dynamically Expandable Networks (Yoon et al., ICLR 2018). Specifically for associative memories: *Self-Sizing Hopfield* (arXiv 2507.10443, 2025) grows "only on genuine novelty" up to the environment's intrinsic storage requirement (estimated via Urysohn width) – without a preset target and without validation search. **But:** there, the *width* of a level grows, not an *abstraction level*.
 
-**Wann lohnt eine neue Ebene?** Nur wenn sie die Beschreibungslänge senkt:
+**When is a new level worthwhile?** Only when it reduces the description length:
 $$H(M_n\mid M_{n+1})+\operatorname{cost}(M_{n+1})\ <\ H(M_n).$$
-Das ist das MDL-Stoppkriterium. Da jede Ebene die Zahl der Einheiten um den Faktor $K$ reduziert, gilt für die erreichbare Tiefe
+This is the MDL stopping criterion. Since each level reduces the number of units by a factor of $K$, the achievable depth is
 $$L_{\max}\approx\log_K N_0 .$$
-Das deckt sich mit dem Ergebnis von Cowsik & Sriram (Generalisierung bis Tiefe $\log N$). **Die Tiefe wächst logarithmisch, nicht unbegrenzt.** Eine „unendliche“ Rekursion $M_0\to M_1\to M_2\to\dots$ ist mathematisch nicht sinnvoll, weil irgendwann $K$ Prototypen übrig sind, die keine weitere Struktur mehr tragen. Für realistische $N_0\sim10^6$–$10^9$ und $K\sim10$–$100$ bedeutet das $L\approx3$–$9$ Ebenen – eine praktikable, keine explosive Zahl.
+This matches the result of Cowsik & Sriram (generalization down to depth $\log N$). **Depth grows logarithmically, not without bound.** An "infinite" recursion $M_0\to M_1\to M_2\to\dots$ is not mathematically sensible, because eventually $K$ prototypes remain that carry no further structure. For realistic $N_0\sim10^6$–$10^9$ and $K\sim10$–$100$, this means $L\approx3$–$9$ levels – a practicable, not an explosive, number.
 
 ---
 
-## 6. Konsolidierung und Vergessen
+## 6. Consolidation and forgetting
 
-**Biologisches Vorbild** (peer-reviewed): Complementary Learning Systems – schnelles hippocampales Episodengedächtnis, langsame kortikale Strukturextraktion, Replay im Schlaf (McClelland, McNaughton & O'Reilly 1995, *Psychol. Rev.*; Update Kumaran, Hassabis & McClelland 2016, *Trends Cogn. Sci.*). RHAM ist dessen rekursive Verallgemeinerung: nicht ein Paar (Hippocampus, Kortex), sondern $L$ Ebenen mit demselben Mechanismus.
+**Biological model** (peer-reviewed): Complementary Learning Systems – fast hippocampal episodic memory, slow cortical structure extraction, replay during sleep (McClelland, McNaughton & O'Reilly 1995, *Psychol. Rev.*; update Kumaran, Hassabis & McClelland 2016, *Trends Cogn. Sci.*). RHAM is its recursive generalization: not one pair (hippocampus, cortex), but $L$ levels with the same mechanism.
 
-**Maschinelles Lernen:** Nested Learning/HOPE (Behrouz et al., NeurIPS 2025) mit mehreren Update-Frequenzen; „Language Models Need Sleep“ (Behrouz, Hashemi, Mirrokni, arXiv 2606.03979, 2026) mit Memory Consolidation und Dreaming. Beide: feste Ebenenzahl.
+**Machine learning:** Nested Learning/HOPE (Behrouz et al., NeurIPS 2025) with multiple update frequencies; "Language Models Need Sleep" (Behrouz, Hashemi, Mirrokni, arXiv 2606.03979, 2026) with memory consolidation and dreaming. Both: fixed number of levels.
 
-**Mathematisch** ist $C$ ein Clustering-/Distillationsschritt (EM, k-Means, Prototype Learning), das Vergessen ein Pruning mit Rekonstruktionsbedingung. Beides ist Standard; die offene Frage ist nicht *ob*, sondern *welches* $C$ den $\log N$-Tiefenbereich tatsächlich erreicht, ohne die Blätter zu zerstören (Memorization–Generalization-Trade-off, Cowsik & Sriram: schärfere Aktivierung $n$ stabilisiert Blätter und destabilisiert Vorfahren).
-
----
-
-## 7. Physik
-
-**Landauer-Grenze.** Löschen eines Bits kostet $\ge k_BT\ln2$ ($2{,}87\cdot10^{-21}$ J bei 300 K). Experimentell bestätigt (Bérut et al., *Nature* 2012). Speichern und reversibles Rechnen haben *keine* fundamentale Untergrenze – nur das **Löschen**. In der RHAM ist damit das selektive Vergessen der einzige thermodynamisch unvermeidbare Posten. Pro vergessener Episode mit $b$ Bits: $\ge b\,k_BT\ln2$. Für $b=10^4$, $10^9$ Episoden: $\approx 3\cdot10^{-8}$ J – vernachlässigbar. Praktische Hardware liegt um $10^{3}$–$10^{6}$ darüber; die Grenze ist also kein Hindernis.
-
-**Thermodynamik der Vorhersage** (Still, Sivak, Bell & Crooks, *Phys. Rev. Lett.* 2012): Für ein System, das mit einer stochastischen Umgebung interagiert, ist die Dissipation nach unten beschränkt durch die *nicht-prädiktive* Information, die es über die Vergangenheit behält. Übersetzt: **Ein Gedächtnis, das Details speichert, die nichts für die Zukunft vorhersagen, bezahlt dafür in Wärme.** Das ist die physikalische Begründung dafür, dass Konsolidierung + Vergessen (Behalten der Regularität, Löschen des Residuums) nicht nur speicherökonomisch, sondern thermodynamisch optimal ist. Diese Verbindung ist in der RHAM-Literatur meines Wissens bisher nicht gezogen worden.
-
-**Hardware-Realisierbarkeit.** Assoziative Speicher mit $O(1)$-Abruf in-memory existieren: memristive Hopfield-Netze mit superlinearer Kapazität $K\approx0{,}3\,N^{1{,}2}$ auf 25×25-Arrays (arXiv 2605.07223, 2026; Preprint, Konferenzstatus unklar) und In-Memory-Hyperdimensional-Computing (Karunaratne et al., *Nature Electronics* 2020). Der Abruf in Ebene $n$ kostet $O(N_n d_n)$ Operationen; die Hierarchie reduziert das auf $O(L\cdot K\cdot d)=O(d\log N_0)$ – das physikalische Hauptargument *für* die Hierarchie ist Abrufenergie, nicht Speichermenge.
-
-**Biologische Plausibilitätsprüfung.** Synapsen tragen ≈ 4,7 Bits (26 unterscheidbare Stärken; Bartol et al., *eLife* 2015). Bei $\sim10^{14}$ Synapsen ergibt das eine Obergrenze um $5\cdot10^{14}$ Bits ≈ 60 TB. Ein Leben an Sinnesdaten übersteigt das um Größenordnungen. Das Gehirn **muss** also komprimieren und vergessen – konsistent mit Abschnitt 4, Faktor $G=b/h$.
+**Mathematically**, $C$ is a clustering/distillation step (EM, k-means, prototype learning), forgetting is pruning with a reconstruction condition. Both are standard; the open question is not *whether* but *which* $C$ actually reaches the $\log N$ depth range without destroying the leaves (memorization–generalization trade-off, Cowsik & Sriram: sharper activation $n$ stabilizes leaves and destabilizes ancestors).
 
 ---
 
-## 8. Wo es scheitern kann (Red-Team-Punkte)
+## 7. Physics
 
-1. **Fehlrouting.** Wählt $M_1$ den falschen Cluster, kann $M_0$ das nicht korrigieren. Harte Top-down-Adressierung ist ein Greedy-Suchbaum; erforderlich sind weiche Routen (Top-$k$/Beam über Ebenen), was Abrufkosten um Faktor $k$ erhöht. HNSW löst genau dieses Problem mit mehreren Kandidaten pro Ebene.
-2. **Symmetrie-Zwang.** Lyapunov-Garantien (Krotov 2021) erfordern symmetrische Gewichte. Asymmetrische Q/K/V-Projektionen verlieren die Konvergenzgarantie; Attention-Einzelschritt (Ramsauer) umgeht das, bietet aber keine Mehrschritt-Stabilität.
-3. **Drift.** Prototypen altern bei nicht-stationärer Umgebung. Self-Sizing Hopfield adressiert das mit *Re-Binding* statt Löschen; RHAM braucht eine Regel, wann ein Prototyp selbst konsolidiert bzw. aufgegeben wird.
-4. **Abnehmender Ertrag.** Ebene $n+1$ lohnt nur, wenn $M_n$ selbst kompressibel ist. Das MDL-Kriterium aus Abschnitt 5 muss den Trigger $I(M_n)>\theta_n$ ergänzen, sonst entstehen leere Ebenen.
-5. **Trade-off Blatt/Prototyp.** Nach Cowsik & Sriram gibt es Parameterbereiche, in denen entweder Blätter oder Vorfahren stabil sind, nicht beide. RHAM muss die Ebenen entkoppeln (eigene $\beta_n$, eigene $d_n$) – das spricht für Regel 2 („jede Ebene eigener Repräsentationsraum“) und gegen geteilte Gewichte.
-6. **Kein Free Lunch.** Bei hoher Entropierate ($h\approx b$) ist RHAM ein teurer Umweg um einen flachen Speicher.
+**Landauer bound.** Erasing one bit costs $\ge k_BT\ln2$ ($2.87\cdot10^{-21}$ J at 300 K). Experimentally confirmed (Bérut et al., *Nature* 2012). Storing and reversible computing have *no* fundamental lower bound – only **erasure** does. In RHAM, selective forgetting is thus the only thermodynamically unavoidable cost item. Per forgotten episode of $b$ bits: $\ge b\,k_BT\ln2$. For $b=10^4$, $10^9$ episodes: $\approx 3\cdot10^{-8}$ J – negligible. Practical hardware runs $10^{3}$–$10^{6}$ times above that; the bound is therefore no obstacle.
+
+**Thermodynamics of prediction** (Still, Sivak, Bell & Crooks, *Phys. Rev. Lett.* 2012): For a system interacting with a stochastic environment, dissipation is lower-bounded by the *non-predictive* information it retains about the past. Translated: **a memory that stores details which predict nothing about the future pays for it in heat.** This is the physical justification for why consolidation + forgetting (retaining the regularity, erasing the residual) is not only storage-economical but thermodynamically optimal. To my knowledge, this connection has not previously been drawn in the RHAM literature.
+
+**Hardware realizability.** Associative memories with $O(1)$ in-memory retrieval exist: memristive Hopfield networks with superlinear capacity $K\approx0.3\,N^{1.2}$ on 25×25 arrays (arXiv 2605.07223, 2026; preprint, conference status unclear) and in-memory hyperdimensional computing (Karunaratne et al., *Nature Electronics* 2020). Retrieval at level $n$ costs $O(N_n d_n)$ operations; the hierarchy reduces this to $O(L\cdot K\cdot d)=O(d\log N_0)$ – the main physical argument *for* the hierarchy is retrieval energy, not storage amount.
+
+**Biological plausibility check.** Synapses carry ≈ 4.7 bits (26 distinguishable strengths; Bartol et al., *eLife* 2015). With $\sim10^{14}$ synapses, that gives an upper bound of about $5\cdot10^{14}$ bits ≈ 60 TB. A lifetime of sensory data exceeds that by orders of magnitude. The brain therefore **must** compress and forget – consistent with Section 4's factor $G=b/h$.
 
 ---
 
-## 9. Novelty-Update (Ergänzung zur Prior-Art-Matrix)
+## 8. Where it can fail (red-team points)
 
-| Arbeit | Deckt ab | Deckt **nicht** ab |
+1. **Misrouting.** If $M_1$ picks the wrong cluster, $M_0$ cannot correct it. Hard top-down addressing is a greedy search tree; soft routes are required (top-$k$/beam across levels), which raises retrieval cost by a factor of $k$. HNSW solves exactly this problem with multiple candidates per level.
+2. **Symmetry constraint.** Lyapunov guarantees (Krotov 2021) require symmetric weights. Asymmetric Q/K/V projections lose the convergence guarantee; single-step attention (Ramsauer) sidesteps this but offers no multi-step stability.
+3. **Drift.** Prototypes age under a non-stationary environment. Self-Sizing Hopfield addresses this with *re-binding* instead of deletion; RHAM needs a rule for when a prototype itself gets consolidated or abandoned.
+4. **Diminishing returns.** Level $n+1$ is worthwhile only if $M_n$ itself is compressible. The MDL criterion from Section 5 must supplement the trigger $I(M_n)>\theta_n$, otherwise empty levels arise.
+5. **Leaf/prototype trade-off.** Per Cowsik & Sriram, there are parameter regimes in which either leaves or ancestors are stable, not both. RHAM must decouple the levels (own $\beta_n$, own $d_n$) – this argues for Rule 2 ("each level its own representation space") and against shared weights.
+6. **No free lunch.** At high entropy rate ($h\approx b$), RHAM is an expensive detour around a flat memory.
+
+---
+
+## 9. Novelty update (addendum to the prior-art matrix)
+
+| Work | Covers | Does **not** cover |
 |---|---|---|
-| Krotov 2021, Hierarchical AM (arXiv) | mehrschichtiger AM mit Energie, Abstraktion unten→oben | kein Wachstum, keine Konsolidierung/Vergessen |
-| Cowsik & Sriram 2026 (arXiv) | Prototypen entstehen aus Interferenz; Tiefe $\log N$ | Tiefe fest, keine Top-down-Adressierung, kein Vergessen |
-| Self-Sizing Hopfield 2025 (arXiv 2507.10443) | bedarfsgetriggertes Wachstum ohne Vorgabe | wächst in der Breite, nicht in Abstraktionsebenen; explizit „no forgetting“ |
-| Hu/Wu/Liu 2024 (arXiv) | optimale Kapazität via sphärische Codes | keine Hierarchie |
-| Shafiei Kafraj/Krotov/Latham 2026 (arXiv) | exponentielle Kapazität durch verteilte Komposition | keine Hierarchie, kein Wachstum |
-| Behrouz et al. 2025/2026 (NeurIPS; arXiv) | mehrere Zeitskalen, Sleep-Konsolidierung | feste Ebenenzahl |
-| Jégou 2011 / Malkov 2018 (IEEE TPAMI) | Residual-Quantisierung, log-Suche | nicht gelernt, nicht verteilt, keine Konsolidierung |
+| Krotov 2021, Hierarchical AM (arXiv) | multi-layer AM with energy, bottom-up abstraction | no growth, no consolidation/forgetting |
+| Cowsik & Sriram 2026 (arXiv) | prototypes emerge from interference; depth $\log N$ | fixed depth, no top-down addressing, no forgetting |
+| Self-Sizing Hopfield 2025 (arXiv 2507.10443) | demand-triggered growth with no preset target | grows in width, not in abstraction levels; explicitly "no forgetting" |
+| Hu/Wu/Liu 2024 (arXiv) | optimal capacity via spherical codes | no hierarchy |
+| Shafiei Kafraj/Krotov/Latham 2026 (arXiv) | exponential capacity via distributed composition | no hierarchy, no growth |
+| Behrouz et al. 2025/2026 (NeurIPS; arXiv) | multiple timescales, sleep consolidation | fixed number of levels |
+| Jégou 2011 / Malkov 2018 (IEEE TPAMI) | residual quantization, log-time search | not learned, not distributed, no consolidation |
 
-**Verbleibender Neuheitskern:** (a) interferenz- *und* MDL-getriggertes Wachsen der *Abstraktionstiefe*, (b) jede Ebene speichert Struktur der darunterliegenden Repräsentationen mit eigenem Q/K/V-Raum und adressiert top-down, (c) Vergessen gekoppelt an Rekonstruierbarkeit von oben, (d) die thermodynamische Begründung (Still 2012 → selektives Vergessen). Keiner der genannten Treffer enthält (a)+(b)+(c) zusammen. Novelty-Urteil bleibt „plausibel neu, nicht gesichert“ – adversariale Suche gegen DNC, Predictive Coding, Hyperdimensional Computing steht aus.
-
----
-
-## 10. Testbare Vorhersagen und nächster Schritt
-
-**Vorhersagen**
-- P1: Bei hierarchisch erzeugten synthetischen Daten (Baum mit Branching $K$, Tiefe $h$) erreicht RHAM bei gleichem Parameterbudget eine um Faktor $\approx K$ pro Ebene höhere fehlerfreie Abrufkapazität als ein flacher moderner Hopfield-Speicher.
-- P2: Die automatisch erreichte Ebenenzahl sättigt bei $\approx\log_K N_0$ und entspricht der Datentiefe $h$.
-- P3: Bei i.i.d.-Rauschdaten entsteht keine Ebene über $M_0$ (MDL-Kriterium schlägt an).
-- P4: Der Grenzspeicher pro Episode $dS/dT$ konvergiert gegen die empirische Entropierate $h$ der Daten.
-
-**Update 2026-10-07 (Simulation):** P1 in dieser Form teilweise widerlegt: Der Vorteil der Hierarchie liegt in scharfem Abruf bei begrenztem β und logarithmischen Abrufkosten, nicht in höherer Kapazität bei freiem β. P2 präzisiert (Tiefe = benötigte, nicht maximale Tiefe), P3 bestätigt. Details: [[Projekte/RHAM/RHAM_Simulation_2026-10-07]] bzw. `docs/RHAM_Simulation_2026-10-07.md`.
-
-**Nächster Schritt (konkret):** Minimalsimulation in NumPy/PyTorch: moderner Hopfield-Speicher ($\beta$, $d$) + Online-Interferenzmaß $I$ + k-Means-Konsolidierung + Rekonstruktions-Pruning; Vergleich flach vs. RHAM auf synthetischen Baumdaten (P1–P3). Aufwand: 1–2 Tage. Danach Theorem-Entwurf: Kapazität der $L$-stufigen Residual-Attention unter Ramsauer-Separationsbedingung.
+**Remaining novelty core:** (a) interference- *and* MDL-triggered growth of the *abstraction depth*, (b) each level stores structure of the representations below it, with its own Q/K/V space, addressed top-down, (c) forgetting coupled to reconstructibility from above, (d) the thermodynamic justification (Still 2012 → selective forgetting). None of the cited works contains (a)+(b)+(c) together. The novelty verdict remains "plausibly novel, not established" – an adversarial search against DNC, predictive coding, hyperdimensional computing is still outstanding.
 
 ---
 
-## 11. Quellen und Bewertung
+## 10. Testable predictions and next step
 
-Peer-reviewed (hohe Verlässlichkeit):
-- Ramsauer et al., *Hopfield Networks is All You Need*, ICLR 2021 – https://arxiv.org/abs/2008.02217 (Theorem 3, Fehlerschranke, Attention-Äquivalenz)
+**Predictions**
+- P1: On hierarchically generated synthetic data (a tree with branching $K$, depth $h$), at the same parameter budget RHAM achieves error-free retrieval capacity higher by roughly a factor $K$ per level than a flat modern Hopfield memory.
+- P2: The automatically reached number of levels saturates at $\approx\log_K N_0$ and matches the data depth $h$.
+- P3: On i.i.d. noise data, no level is created above $M_0$ (the MDL criterion fires).
+- P4: The marginal storage per episode $dS/dT$ converges to the data's empirical entropy rate $h$.
+
+**Update 2026-10-07 (simulation):** P1 partially refuted in this form: the hierarchy's advantage lies in sharp retrieval at bounded β and logarithmic retrieval cost, not in higher capacity at unconstrained β. P2 refined (depth = depth needed, not maximum depth), P3 confirmed. Details: [[Projects/RHAM/RHAM_Simulation_2026-10-07]] resp. `docs/RHAM_Simulation_2026-10-07.md`.
+
+**Next step (concrete):** minimal simulation in NumPy/PyTorch: modern Hopfield memory ($\beta$, $d$) + online interference measure $I$ + k-means consolidation + reconstruction-based pruning; compare flat vs. RHAM on synthetic tree data (P1–P3). Effort: 1–2 days. Afterward, draft a theorem: capacity of $L$-level residual attention under the Ramsauer separation condition.
+
+---
+
+## 11. Sources and assessment
+
+Peer-reviewed (high reliability):
+- Ramsauer et al., *Hopfield Networks is All You Need*, ICLR 2021 – https://arxiv.org/abs/2008.02217 (Theorem 3, error bound, attention equivalence)
 - Bricken & Pehlevan, *Attention Approximates Sparse Distributed Memory*, NeurIPS 2021 – https://proceedings.neurips.cc/paper/2021/hash/8171ac2c5544a5cb54ac0f38bf477af4-Abstract.html
 - Demircigil et al., *On a model of associative memory with huge storage capacity*, J. Stat. Phys. 2017 – https://arxiv.org/abs/1702.01929
-- Amit, Gutfreund, Sompolinsky, Phys. Rev. Lett. 55 (1985) 1530 – Kapazität 0,138 N
+- Amit, Gutfreund, Sompolinsky, Phys. Rev. Lett. 55 (1985) 1530 – capacity 0.138 N
 - Bérut et al., *Experimental verification of Landauer's principle*, Nature 483 (2012) 187
 - Still, Sivak, Bell, Crooks, *Thermodynamics of prediction*, Phys. Rev. Lett. 109 (2012) 120604 – https://arxiv.org/abs/1203.3271
 - Bartol et al., *Nanoconnectomic upper bound on the variability of synaptic plasticity*, eLife 2015 – https://elifesciences.org/articles/10778
@@ -183,7 +183,7 @@ Peer-reviewed (hohe Verlässlichkeit):
 - Behrouz et al., *Nested Learning*, NeurIPS 2025 – https://arxiv.org/abs/2512.24695
 - Karunaratne et al., *In-memory hyperdimensional computing*, Nature Electronics 2020 – https://arxiv.org/abs/1906.01548
 
-Preprints (inhaltlich geprüft, nicht begutachtet – mit Vorsicht):
+Preprints (reviewed for content, not peer-reviewed – treat with caution):
 - Krotov, *Hierarchical Associative Memory*, arXiv 2107.06446 (2021)
 - Hu, Wu, Liu, *Provably Optimal Memory Capacity for Modern Hopfield Models*, arXiv 2410.23126 (2024)
 - Cowsik & Sriram, *Hierarchical Prototype Emergence in Modern Hopfield Models*, arXiv 2609.12079 (Sept. 2026)
@@ -192,4 +192,4 @@ Preprints (inhaltlich geprüft, nicht begutachtet – mit Vorsicht):
 - Behrouz, Hashemi, Mirrokni, *Language Models Need Sleep*, arXiv 2606.03979 (2026)
 - *Hardware-aware Hopfield Network with a Nonlinear Memristor Array*, arXiv 2605.07223 (2026)
 
-Nicht verifizierbar in dieser Sitzung (Volltext nicht abrufbar): arXiv 2609.02195 „Memory as an Energy Landscape“ – nicht verwendet.
+Not verifiable in this session (full text unavailable): arXiv 2609.02195 "Memory as an Energy Landscape" – not used.

@@ -1,95 +1,95 @@
 ---
-projekt: RHAM
+project: RHAM
 repo: https://github.com/6nhym5j2nk-design/rham-project
-stand: 2026-10-07
-tags: [rham, simulation, drift, regel-7, anisotropie, g-means]
-modus: VERIFY
+date: 2026-10-07
+tags: [rham, simulation, drift, rule-7, anisotropy, g-means]
+mode: VERIFY
 ---
-# RHAM – Simulation Runde 4: Regel 7 und anisotropes Rauschen (2026-10-07)
+# RHAM – Simulation Round 4: Rule 7 and Anisotropic Noise (2026-10-07)
 
-**Code:** `sim/rham_rule7.py` (Klasse `OnlineRHAM7`; Experimente `drift_*`, `aniso_*`, `gmeans_*`), `sim/diag_cap.py`, `sim/eval_e8.py`, `sim/eval_e8a.py`, `sim/plot_rule7.py`. Rohdaten: `sim/results_E8_*.json`. Abbildung: `sim/rham_runde4_ergebnisse.png`. Vorgänger: [[Projekte/RHAM/RHAM_Simulation_Runde3_Haertetest_2026-10-07]].
+**Code:** `sim/rham_rule7.py` (class `OnlineRHAM7`; experiments `drift_*`, `aniso_*`, `gmeans_*`), `sim/diag_cap.py`, `sim/eval_e8.py`, `sim/eval_e8a.py`, `sim/plot_rule7.py`. Raw data: `sim/results_E8_*.json`. Figure: `sim/rham_runde4_ergebnisse.png`. Predecessor: [[Projects/RHAM/RHAM_Simulation_Runde3_Haertetest_2026-10-07]].
 
-## Kurzfassung
+## Summary
 
-1. **Regel 7 komplett** (gedeckelte Lernrate + Altersgrenze für Episoden + Ruhestand für Prototypen + Zusammenführen) hält bei starker Drift die Genauigkeit für häufige **und** seltene Konzepte bei 100 % und **halbiert den Speicher** (600 vs. 1214 Vektoren). Das Wachstum kommt zum Stillstand, aber auf einem Niveau 2,2-mal über dem driftfreien Fall.
-2. **Die Teilregeln wirken nur zusammen.** Gedeckelte Lernrate allein ist bei starker Drift *schlechter* als gar nichts (häufige Konzepte 87,7 % vs. 97,8 %). Ursache (diagnostiziert): Veraltete Episoden im Puffer gewinnen den Vergleich gegen die aktuellen Prototypen; erst die Altersgrenze räumt sie ab.
-3. **Ruhestand schadet seltenen Konzepten nicht:** gleiche Genauigkeit wie ohne Ruhestand; Rückgriff auf kalte Prototypen kostet bei schwacher Drift < 1 Zusatzvergleich pro Abruf.
-4. **Teilungstest unter anisotropem Rauschen:** Es gibt keinen Gewinner, sondern einen Zielkonflikt zwischen Sensitivität und Spezifität. Das iso-Nullmodell teilt längliche Rauschwolken fälschlich (α = 8: 395 Prototypen für 207 Konzepte), erkennt Überlappung aber am besten (98,4 %). G-means (mit Kreuzanpassung) teilt kaum falsch (226 Prototypen), erkennt Überlappung aber nur mäßig (94,2 %).
-5. **Verbleibende Lücke:** Unter starker Drift bleibt der Puffer bei ≈ 290 Episoden – zu 92 % nie konsolidierte Episoden, zu 75 % aus der seltenen Hälfte der Konzepte.
+1. **Rule 7 complete** (capped learning rate + age limit for episodes + retirement for prototypes + merging) holds accuracy for both frequent **and** rare concepts at 100% under strong drift and **halves memory** (600 vs. 1214 vectors). Growth comes to a halt, but at a level 2.2 times above the drift-free case.
+2. **The sub-rules only work together.** The capped learning rate alone is *worse* than doing nothing under strong drift (frequent concepts 87.7% vs. 97.8%). Cause (diagnosed): outdated episodes in the buffer win the comparison against the current prototypes; only the age limit clears them out.
+3. **Retirement does not hurt rare concepts:** same accuracy as without retirement; falling back on cold prototypes costs < 1 extra comparison per retrieval under weak drift.
+4. **Split test under anisotropic noise:** there is no outright winner, but a trade-off between sensitivity and specificity. The iso null model wrongly splits elongated noise clouds (α = 8: 395 prototypes for 207 concepts) but detects overlap best (98.4%). G-means (with cross-fitting) rarely over-splits (226 prototypes) but detects overlap only moderately (94.2%).
+5. **Remaining gap:** Under strong drift, the buffer stays at ≈ 290 episodes – 92% never consolidated, 75% from the rare half of the concepts.
 
 ---
 
-## 1. Regel 7 – Bestandteile
+## 1. Rule 7 – components
 
-| Teil | Mechanismus | biologische Entsprechung (Hypothese) |
+| Part | Mechanism | Biological counterpart (hypothesis) |
 |---|---|---|
-| 7a | gedeckelte Lernrate (n ≤ 30): Prototyp = exponentielles Gleitmittel | Plastizität bleibt erhalten |
-| 7b | Altersgrenze: eingerechnete Episoden gehen nach 3 Schlafphasen ins Archiv, auch bei schlechter Rekonstruktion | Abklingen hippocampaler Spuren nach Konsolidierung |
-| 7c | Ruhestand: Prototyp ohne Zuordnung seit 5 Schlafphasen → kalt (nicht gelöscht); Reaktivierung bei neuer Zuordnung; Abruf fällt auf kalte Prototypen zurück, wenn der beste heiße Treffer < 0,80 ist | schwer zugängliche, aber erhaltene Gedächtnisinhalte |
-| 7d | Zusammenführen gegenseitig nächster Prototypen, wenn ihre gemeinsamen Episoden den Teilungstest **nicht** bestehen (Schwelle niedriger als beim Teilen → keine Pendelbewegung) | Schema-Integration |
+| 7a | capped learning rate (n ≤ 30): prototype = exponential moving average | plasticity is preserved |
+| 7b | age limit: episodes folded in go to the archive after 3 sleep phases, even with poor reconstruction | decay of hippocampal traces after consolidation |
+| 7c | retirement: a prototype with no assignment for 5 sleep phases → cold (not deleted); reactivated on a new assignment; retrieval falls back to cold prototypes when the best hot hit is < 0.80 | hard-to-access but preserved memory content |
+| 7d | merging of mutually nearest prototypes whose combined episodes **fail** the split test (threshold lower than for splitting → no oscillation) | schema integration |
 
-## 2. E8 Drift (20 000 Episoden, 216 Konzepte, Zipf, 3 Seeds)
+## 2. E8 Drift (20,000 episodes, 216 concepts, Zipf, 3 seeds)
 
-Abfragen getrennt für häufige Konzepte (oberste 20 %) und seltene (untere 50 %).
+Queries evaluated separately for frequent concepts (top 20%) and rare ones (bottom 50%).
 
-| Drift | Variante | häufig, Ende | selten, Ende | häufig, Mittel | selten, Mittel | Puffer | heiß | kalt | assoziativ gesamt | Kosten pro Abruf |
+| Drift | Variant | frequent, end | rare, end | frequent, mean | rare, mean | buffer | hot | cold | associative total | cost per retrieval |
 |---|---|---|---|---|---|---|---|---|---|---|
-| 0 | Basis | 1,000 | 1,000 | 0,998 | 0,955 | 0 | 216 | 0 | 266 | 30 |
-| 0 | Regel 7 | 1,000 | 1,000 | 0,999 | 0,955 | 0 | 212 | 4 | 279 | 28 |
-| 0,2 | Basis | 0,999 | 0,978 | 0,997 | 0,950 | 424 | 320 | 0 | 895 | 455 |
-| 0,2 | gedeckelt | 0,963 | 0,982 | 0,990 | 0,946 | 230 | 286 | 0 | 651 | 259 |
-| 0,2 | **Regel 7** | 0,984 | 0,999 | 0,993 | 0,949 | 148 | 233 | 53 | **481** | **186** |
-| 0,3 | Basis | 0,978 | 0,981 | 0,987 | 0,939 | 419 | 543 | 0 | 1214 | 456 |
-| 0,3 | gedeckelt | **0,877** | 0,967 | 0,970 | 0,940 | 374 | 508 | 0 | 1115 | 409 |
-| 0,3 | **Regel 7** | **1,000** | **1,000** | 0,996 | 0,953 | 279 | 241 | 267 | **600** | 366 |
+| 0 | baseline | 1.000 | 1.000 | 0.998 | 0.955 | 0 | 216 | 0 | 266 | 30 |
+| 0 | rule 7 | 1.000 | 1.000 | 0.999 | 0.955 | 0 | 212 | 4 | 279 | 28 |
+| 0.2 | baseline | 0.999 | 0.978 | 0.997 | 0.950 | 424 | 320 | 0 | 895 | 455 |
+| 0.2 | capped | 0.963 | 0.982 | 0.990 | 0.946 | 230 | 286 | 0 | 651 | 259 |
+| 0.2 | **rule 7** | 0.984 | 0.999 | 0.993 | 0.949 | 148 | 233 | 53 | **481** | **186** |
+| 0.3 | baseline | 0.978 | 0.981 | 0.987 | 0.939 | 419 | 543 | 0 | 1214 | 456 |
+| 0.3 | capped | **0.877** | 0.967 | 0.970 | 0.940 | 374 | 508 | 0 | 1115 | 409 |
+| 0.3 | **rule 7** | **1.000** | **1.000** | 0.996 | 0.953 | 279 | 241 | 267 | **600** | 366 |
 
-(Drift 0,1: alle Varianten ≈ gleich, Tabelle in `eval_e8.py`.) Bei Regel 7 und Drift 0,3 entspricht die Zahl heißer Prototypen (241) fast genau den 216 echten Konzepten; die 267 kalten sind die veralteten Positionen. Zusammenführungen traten in keinem Lauf auf (Konzepte bleiben in diesem Generator getrennt).
+(Drift 0.1: all variants ≈ equal, see table in `eval_e8.py`.) With rule 7 and drift 0.3, the number of hot prototypes (241) matches almost exactly the 216 true concepts; the 267 cold ones are outdated positions. Merges occurred in no run (concepts remain separate in this generator).
 
-### Diagnose „gedeckelt schlechter als Basis“
-- Hypothese 1 (Etikett-Altlast der Prototypen) **widerlegt**: 40 von 52 Fehlern stammen aus dem Puffer, nicht aus Prototypen; auch das Etikett der jüngsten Zuordnungen ist bei fehlerhaften Prototypen falsch.
-- Hypothese 2 **bestätigt**: Puffer-Episoden, die zu Fehlern führen, sind im Mittel 7,7–11,8 Schlafphasen alt; solche, die zu Treffern führen, 1,1–2,3. Mit gedeckelter Lernrate folgen die Prototypen der Drift, deshalb werden die *jungen*, passenden Episoden vergessen, während die *alten*, nicht mehr zuordenbaren bleiben und Abfragen fehlleiten.
+### Diagnosis "capped worse than baseline"
+- Hypothesis 1 (label carry-over in prototypes) **refuted**: 40 of 52 errors come from the buffer, not from prototypes; the label of the most recent assignment is also wrong for the faulty prototypes.
+- Hypothesis 2 **confirmed**: buffer episodes that lead to errors are on average 7.7–11.8 sleep phases old; those leading to hits are 1.1–2.3. With a capped learning rate, prototypes track the drift, so *young*, matching episodes get forgotten while *old*, no-longer-assignable ones remain and misdirect queries.
 
-### Verbleibender Puffer unter starker Drift (Regel 7, Seed 0)
-293 Episoden; 92 % nie in einen Prototyp eingerechnet; Median-Häufigkeitsrang 151 von 216; 75 % aus der seltenen Hälfte. Seltene Konzepte wandern weiter, bevor sich drei ähnliche Episoden für einen Prototyp sammeln. Eine Altersgrenze auch für nie eingerechnete Episoden würde den Puffer begrenzen, aber genau diese seltenen Konzepte aus dem heißen Speicher entfernen – ein offener Zielkonflikt.
+### Remaining buffer under strong drift (rule 7, seed 0)
+293 episodes; 92% never folded into a prototype; median frequency rank 151 of 216; 75% from the rare half. Rare concepts keep drifting before three similar episodes accumulate for a prototype. An age limit also for never-folded episodes would bound the buffer but would remove exactly these rare concepts from hot memory – an open trade-off.
 
-## 3. E8 Anisotropes Rauschen und Teilungstest (8000 Episoden, 3 Seeds)
+## 3. E8 Anisotropic noise and split test (8000 episodes, 3 seeds)
 
-Rauschen je Konzept entlang einer eigenen Tangentialrichtung um α gestreckt, Gesamtvarianz konstant (mittlerer Kosinus Episode–Zentrum 0,93 wie im isotropen Fall; bei α = 4 liegen 18 % der Rauschvarianz in einer von 64 Richtungen). Vier Varianten des Teilungstests:
-- **iso-Null** (Runde 3): ein Konzept + isotropes Rauschen.
-- **cov-Null**: Gauß mit der aus den Daten geschätzten Kovarianz.
-- **G-means** (Hamerly & Elkan 2003, NeurIPS): Projektion auf die Achse der 2-Means-Zentren, Anderson-Darling-Test auf Normalität (α = 0,0001). **Eigene Ergänzung: Kreuzanpassung** (Achse auf Hälfte A, Test auf Hälfte B). Ohne sie teilt der Test in 64 Dimensionen auch isotrope Wolken (Statistik +0,74 > 0): 2-Means wählt genau die zufällig zweigeteilt aussehende Richtung. Mit Kreuzanpassung in je 20 Wiederholungen: isotrop 0 %, länglich 0 %, bimodal 100 % Teilungen.
+Noise per concept stretched by α along its own tangential direction, total variance held constant (mean cosine episode–center 0.93 as in the isotropic case; at α = 4, 18% of the noise variance lies along one of 64 directions). Four variants of the split test:
+- **iso-null** (round 3): one concept + isotropic noise.
+- **cov-null**: Gaussian with the data's estimated covariance.
+- **G-means** (Hamerly & Elkan 2003, NeurIPS): project onto the axis of the 2-means centers, Anderson-Darling normality test (α = 0.0001). **Own addition: cross-fitting** (axis on half A, test on half B). Without it, the test also splits isotropic clouds in 64 dimensions (statistic +0.74 > 0): 2-means picks exactly the direction that looks randomly bimodal. With cross-fitting, over 20 repetitions each: isotropic 0%, elongated 0%, bimodal 100% splits.
 
-**Getrennte Konzepte** (ideal: ≈ 207 Prototypen):
+**Separated concepts** (ideal: ≈ 207 prototypes):
 
-| α | ohne Teilung | iso-Null | cov-Null | G-means |
+| α | no split | iso-null | cov-null | G-means |
 |---|---|---|---|---|
 | 1 | 208 | 208 | 208 | 208 |
 | 4 | 208 | **270** | 208 | 208 |
 | 8 | 221 | **395** | 254 | 226 |
 
-**Überlappende Konzepte** (Geschwister-Kosinus 0,85), Konzept-Top-1 (Orakel 1,000):
+**Overlapping concepts** (sibling cosine 0.85), concept top-1 (oracle 1.000):
 
-| α | ohne Teilung | iso-Null | cov-Null | G-means |
+| α | no split | iso-null | cov-null | G-means |
 |---|---|---|---|---|
-| 1 | 0,924 | **0,993** | 0,939 | 0,957 |
-| 4 | 0,936 | **0,990** | 0,943 | 0,950 |
-| 8 | 0,927 | **0,984** | 0,928 | 0,942 |
+| 1 | 0.924 | **0.993** | 0.939 | 0.957 |
+| 4 | 0.936 | **0.990** | 0.943 | 0.950 |
+| 8 | 0.927 | **0.984** | 0.928 | 0.942 |
 
-**Lesart:** Kein Nullmodell ist zugleich empfindlich und spezifisch. Das iso-Nullmodell verwechselt längliche Rauschwolken mit zwei Konzepten. cov-Null schätzt die Kovarianz aus den bereits verschmolzenen Daten und nimmt die Trennrichtung damit ins Nullmodell auf. G-means ist am spezifischsten, verliert aber durch die Halbierung der Stichprobe Trennschärfe. Für die Genauigkeit ist Über-Teilung fast folgenlos (Mehrheitsetikett), sie kostet aber Speicher und verfälscht die „Konzeptzahl“ – für ein Gedächtnis, das Abstraktionen bilden soll, ist das relevant.
+**Reading:** No null model is simultaneously sensitive and specific. The iso null model confuses elongated noise clouds with two concepts. The cov-null model estimates covariance from data that is already merged and so absorbs the separating direction into the null model itself. G-means is the most specific but loses discriminative power by halving the sample via cross-fitting. For accuracy, over-splitting is almost harmless (majority label), but it costs memory and distorts the "concept count" – which matters for a memory meant to form abstractions.
 
-## 4. Methodische Notizen
+## 4. Methodological notes
 
-- **Skalierungsfehler im ersten Entwurf** des anisotropen Generators (σ·√d statt σ, achtfach zu starkes Rauschen); beim Gegenlesen vor dem ersten Lauf gefunden. Zusätzlich vorab geprüft: mittlerer Kosinus Episode–Zentrum gleich dem isotropen Fall.
-- **Selektionsverzerrung im G-means-Test** durch eigenen Plausibilitätstest gefunden (isotrope Wolke ergab positive Statistik); behoben durch Kreuzanpassung, Fehlerraten danach gemessen.
-- **Eigene Hypothese widerlegt** (Etikett-Altlast) und durch gemessene Ersatzhypothese ersetzt (Alter der Puffer-Episoden).
+- **Scaling bug in the first draft** of the anisotropic generator (σ·√d instead of σ, eightfold too much noise); found while re-reading before the first run. Additionally pre-checked: mean cosine episode–center matched the isotropic case.
+- **Selection bias in the G-means test** found via its own plausibility check (an isotropic cloud produced a positive statistic); fixed through cross-fitting, error rates then measured.
+- **Own hypothesis refuted** (label carry-over) and replaced with a measured alternative hypothesis (age of buffer episodes).
 
-## 5. Regelwerk v3
+## 5. Rule set v3
 
-1. Verteilte Speicherung · 2. Assoziativer Abruf (Routing im Residuenraum, exakter Endschritt) · 3. Dynamische Hierarchie (Interferenz + Strukturtest) · 4. Offline-Konsolidierung · 5. Vergessen = Herabstufung ins Archiv (Rekonstruktion oder Alter), markierte Episoden ausgenommen · 6. Teilen (Nullmodell offen: iso = empfindlich, G-means = spezifisch) · 7. Prototyp-Alterung: gedeckelte Lernrate + Altersgrenze + Ruhestand + Zusammenführen – **nur gemeinsam wirksam**.
+1. Distributed storage · 2. Associative retrieval (routing in residual space, exact final step) · 3. Dynamic hierarchy (interference + structure test) · 4. Offline consolidation · 5. Forgetting = demotion to the archive (reconstruction or age), tagged episodes excepted · 6. Splitting (null model open: iso = sensitive, G-means = specific) · 7. Prototype aging: capped learning rate + age limit + retirement + merging – **effective only together**.
 
-## 6. Offene Punkte und nächste Schritte
+## 6. Open points and next steps
 
-1. Teilungstest verbessern: Trennschärfe von G-means ohne Stichprobenhalbierung (z. B. wiederholte Kreuzanpassung mit kombinierten p-Werten) oder zweistufig (iso schlägt vor, G-means bestätigt).
-2. Seltene Konzepte unter Drift: Prototyp-Bildung schon ab 2 Episoden mit Zeitfenster, oder getrennter „Rest“-Puffer mit eigener Altersgrenze; Kosten für seltene Konzepte messen.
-3. Echte Embeddings (Text/Bild), bevor weitere Feinabstimmung auf synthetischen Daten erfolgt – das Risiko wächst, das Regelwerk an den Generator anzupassen.
-4. Unabhängiges Code-Review.
+1. Improve the split test: discriminative power of G-means without halving the sample (e.g. repeated cross-fitting with combined p-values) or two-stage (iso proposes, G-means confirms).
+2. Rare concepts under drift: form prototypes starting from 2 episodes with a time window, or a separate "residual" buffer with its own age limit; measure the cost for rare concepts.
+3. Real embeddings (text/image) before further fine-tuning on synthetic data – the risk grows of fitting the rule set to the generator rather than to reality.
+4. Independent code review.

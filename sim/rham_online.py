@@ -1,30 +1,31 @@
 """
-RHAM – Online-Experiment E5 (Stand 2026-10-07)
+RHAM - online experiment E5 (as of 2026-10-07)
 
-Episoden kommen einzeln als Strom. Jede Episode ist eine verrauschte Instanz
-eines "Konzepts" (Blatt eines Baums K^h); Konzepte treten Zipf-verteilt auf.
-Nach der Hälfte des Stroms werden neue Hauptäste aktiv (Nicht-Stationarität).
+Episodes arrive one at a time as a stream. Each episode is a noisy instance
+of a "concept" (a leaf of a tree K^h); concepts occur with Zipf-distributed
+frequency. Halfway through the stream, new main branches become active
+(non-stationarity).
 
-Gedächtnis
-  M0  episodischer Puffer (Rohepisoden)
-  M1  Konzept-Prototypen (laufende Mittelwerte), entstehen online (DP-means-
-      artig, Kulis & Jordan 2012): neue Prototyp-Kandidaten aus M0, sobald
-      genügend ähnliche Episoden vorliegen
-  M2+ werden in jeder Schlafphase aus M1 mit der Wachstumsregel
-      (Interferenz + Gap-Statistik) neu aufgebaut
+Memory
+  M0  episodic buffer (raw episodes)
+  M1  concept prototypes (running means), created online (DP-means-like,
+      Kulis & Jordan 2012): new prototype candidates emerge from M0 once
+      enough similar episodes are present
+  M2+ rebuilt from M1 in every sleep phase using the growth rule
+      (interference + gap statistic)
 
-Schlafphase alle S Episoden
-  1. Episoden in M0 einem Prototyp zuordnen (Kosinus >= tau_assign) -> Mittelwert-Update
-  2. nicht zugeordnete Episoden clustern; Cluster mit >= m_min Episoden -> neuer Prototyp
-  3. Vergessen: Episoden mit Kosinus zum Prototyp >= tau_forget und Prototyp-
-     Unterstützung >= m_min verlassen M0 (ins Archiv, nur Zeiger bleibt)
-  4. obere Ebenen neu aufbauen
+Sleep phase every S episodes
+  1. assign episodes in M0 to a prototype (cosine >= tau_assign) -> running mean update
+  2. cluster unassigned episodes; a cluster with >= m_min episodes -> new prototype
+  3. forgetting: episodes with cosine to the prototype >= tau_forget and
+     prototype support >= m_min leave M0 (go to the archive, only a pointer remains)
+  4. rebuild the upper levels
 
-Messgrößen pro Schlafphase
-  - assoziativer Speicher (Vektoren in M0 + alle Ebenen) vs. flacher Speicher (alle Episoden)
-  - Tiefe der Hierarchie
-  - Konzept-Abruf für alte und neue Konzepte (Top-1 Konzept korrekt)
-  - P4: Bits pro Episode im Zwei-Teile-Code vs. wahre Entropierate der Quelle
+Metrics per sleep phase
+  - associative memory (vectors in M0 + all levels) vs. flat memory (all episodes)
+  - depth of the hierarchy
+  - concept retrieval for old and new concepts (top-1 concept correct)
+  - P4: bits per episode in the two-part code vs. true entropy rate of the source
 """
 from __future__ import annotations
 
@@ -41,11 +42,11 @@ normalize = rs.normalize
 
 def make_concepts(K, h, d, rng):
     X, labels = rs.make_tree(K, h, d, rng)
-    return X, labels[:, 0]          # Blatt-Prototypen, Hauptast je Blatt
+    return X, labels[:, 0]          # leaf prototypes, main branch per leaf
 
 
 def gauss_bits(var_per_dim, D, d):
-    """Rate-Distortion einer Gauß-Quelle: d/2 * log2(var/D), >= 0 (Näherung)."""
+    """Rate-distortion of a Gaussian source: d/2 * log2(var/D), >= 0 (approximation)."""
     return d / 2 * max(0.0, np.log2(var_per_dim / D))
 
 
@@ -55,7 +56,7 @@ def run_stream(seed, K=6, h=3, d=64, T=20000, S=1000, sigma=0.4, zipf_a=1.1,
     rng = np.random.default_rng(seed)
     C, branch = make_concepts(K, h, d, rng)
     nC = len(C)
-    # Zipf-Häufigkeiten in zufälliger Reihenfolge
+    # Zipf frequencies in random order
     w = 1.0 / np.arange(1, nC + 1) ** zipf_a
     w = w[rng.permutation(nC)]
     old_branches = np.arange(int(np.ceil(K * (1 - new_branch_frac))))
@@ -67,7 +68,7 @@ def run_stream(seed, K=6, h=3, d=64, T=20000, S=1000, sigma=0.4, zipf_a=1.1,
         noise = normalize(rng.standard_normal((n, d))) * sigma
         return normalize(C[c] + noise), c
 
-    # Wahre Entropierate (empirisch aus dem Generator): Konzeptentropie + Rauschen
+    # True entropy rate (empirical, from the generator): concept entropy + noise
     def true_rate(active):
         p = w * active; p = p / p.sum()
         Hc = -(p[p > 0] * np.log2(p[p > 0])).sum()
@@ -75,7 +76,7 @@ def run_stream(seed, K=6, h=3, d=64, T=20000, S=1000, sigma=0.4, zipf_a=1.1,
         var_noise = ((E - C[c]) ** 2).mean()
         return Hc + gauss_bits(var_noise, D, d), Hc
 
-    # Zustand
+    # State
     M0 = np.zeros((0, d)); M0_lab = np.zeros(0, int); M0_counted = np.zeros(0, bool)
     P = np.zeros((0, d)); P_n = np.zeros(0); P_labcounts = []     # M1
     archive_n = 0
@@ -89,17 +90,17 @@ def run_stream(seed, K=6, h=3, d=64, T=20000, S=1000, sigma=0.4, zipf_a=1.1,
         E, c = sample(S, active)
         t += S
         flat_store += S
-        # ---- Wach-Phase: Episoden landen in M0 -----------------------------
+        # ---- wake phase: episodes land in M0 -------------------------------
         M0 = np.vstack([M0, E]); M0_lab = np.concatenate([M0_lab, c])
         M0_counted = np.concatenate([M0_counted, np.zeros(len(E), bool)])
 
-        # ---- Bits dieses Fensters (Zwei-Teile-Code, vor Konsolidierung) ----
+        # ---- bits for this window (two-part code, before consolidation) ----
         raw_var = ((E - E.mean(0)) ** 2).mean()
         raw_bits = gauss_bits(raw_var, D, d)
         n_proto_before = len(P)
 
-        # ---- Schlaf: Konsolidierung -----------------------------------------
-        # M0_counted[i] = Episode i ist bereits in genau einen Prototyp-Mittelwert eingerechnet
+        # ---- sleep: consolidation -------------------------------------------
+        # M0_counted[i] = episode i has already been folded into exactly one prototype mean
         if len(P):
             sim = M0 @ P.T
             best = sim.argmax(1)
@@ -110,13 +111,13 @@ def run_stream(seed, K=6, h=3, d=64, T=20000, S=1000, sigma=0.4, zipf_a=1.1,
         for j in np.unique(best[newly]):
             m = newly & (best == j)
             tot = P_n[j] + m.sum()
-            P[j] = normalize(P[j] * P_n[j] / tot + M0[m].sum(0) / tot)   # laufender Mittelwert
+            P[j] = normalize(P[j] * P_n[j] / tot + M0[m].sum(0) / tot)   # running mean
             P_n[j] = tot
             for lab_ in M0_lab[m]:
                 P_labcounts[j][lab_] = P_labcounts[j].get(lab_, 0) + 1
         M0_counted = M0_counted | assigned
 
-        # neue Prototypen aus nicht zugeordneten Episoden (DP-means-artig, greedy)
+        # new prototypes from unassigned episodes (DP-means-like, greedy)
         un = np.where(~M0_counted)[0]
         if len(un) >= m_min:
             U = M0[un]
@@ -128,7 +129,7 @@ def run_stream(seed, K=6, h=3, d=64, T=20000, S=1000, sigma=0.4, zipf_a=1.1,
                 if len(grp) < m_min:
                     continue
                 proto = normalize(U[grp].mean(0, keepdims=True))[0]
-                grp = np.where((U @ proto >= tau_assign) & ~used)[0]     # gegen Mittelwert verfeinern
+                grp = np.where((U @ proto >= tau_assign) & ~used)[0]     # refine against the mean
                 if len(grp) < m_min:
                     continue
                 proto = normalize(U[grp].mean(0, keepdims=True))[0]
@@ -140,7 +141,7 @@ def run_stream(seed, K=6, h=3, d=64, T=20000, S=1000, sigma=0.4, zipf_a=1.1,
                 used[grp] = True
             M0_counted[un[used]] = True
 
-        # ---- Vergessen -----------------------------------------------------
+        # ---- forgetting ------------------------------------------------------
         forgot = 0
         if forget and len(P):
             sim = M0 @ P.T
@@ -151,7 +152,7 @@ def run_stream(seed, K=6, h=3, d=64, T=20000, S=1000, sigma=0.4, zipf_a=1.1,
             M0 = M0[~drop]; M0_lab = M0_lab[~drop]
             M0_counted = M0_counted[~drop]
 
-        # ---- obere Ebenen neu aufbauen --------------------------------------
+        # ---- rebuild upper levels --------------------------------------------
         if len(P) >= 2:
             if grow:
                 R, glog = rs.grow_hierarchy(P, beta, seed=seed)
@@ -160,13 +161,13 @@ def run_stream(seed, K=6, h=3, d=64, T=20000, S=1000, sigma=0.4, zipf_a=1.1,
         upper = sum(L.vecs.shape[0] for L in R.levels[1:]) if R is not None else 0
         assoc_store = len(M0) + len(P) + upper
 
-        # ---- Bits: Zwei-Teile-Code für das Fenster --------------------------
+        # ---- bits: two-part code for the window --------------------------
         if len(P):
             simE = E @ P.T
             bj = simE.argmax(1); ok = simE.max(1) >= tau_assign
             res_var = ((E[ok] - P[bj[ok]]) ** 2).mean() if ok.any() else raw_var
             frac_ok = ok.mean()
-            # Konzeptindex: empirische Entropie der Zuordnungen
+            # concept index: empirical entropy of the assignments
             pj = np.bincount(bj[ok], minlength=len(P)) / max(1, ok.sum())
             Hj = -(pj[pj > 0] * np.log2(pj[pj > 0])).sum()
             data_bits = frac_ok * (Hj + gauss_bits(res_var, D, d)) + (1 - frac_ok) * raw_bits
@@ -176,7 +177,7 @@ def run_stream(seed, K=6, h=3, d=64, T=20000, S=1000, sigma=0.4, zipf_a=1.1,
         hier_bits = data_bits + model_bits
         h_true, Hc = true_rate(active)
 
-        # ---- Abrufprobe: Konzept-Top-1 für alte und neue Konzepte -----------
+        # ---- retrieval probe: concept top-1 for old and new concepts -----------
         def probe(mask):
             if not mask.any():
                 return None, None
@@ -201,21 +202,21 @@ def run_stream(seed, K=6, h=3, d=64, T=20000, S=1000, sigma=0.4, zipf_a=1.1,
         acc_new, _ = probe(~is_old & active) if (~is_old & active).any() else (None, None)
 
         entry = {"t": t, "M0": int(len(M0)), "M1": int(len(P)), "upper": int(upper),
-                 "depth": (R.depth + 1) if R is not None else 1,   # +1 für M0
+                 "depth": (R.depth + 1) if R is not None else 1,   # +1 for M0
                  "assoc_store": int(assoc_store), "flat_store": int(flat_store),
                  "archive": int(archive_n), "forgot_now": forgot, "new_protos": int(len(P) - n_proto_before),
                  "bits_raw": round(raw_bits, 2), "bits_rham": round(hier_bits, 2),
                  "bits_model": round(model_bits, 2), "h_true": round(h_true, 2), "H_concepts": round(Hc, 2),
                  "acc_old": acc_old, "acc_new": acc_new, "probe_cost": cost_old}
         log.append(entry)
-        print(f"E5 s={seed} t={t:5d} M0={len(M0):4d} M1={len(P):3d} Tiefe={entry['depth']} "
-              f"assoz={assoc_store:5d} flach={flat_store:5d} bits rham/raw/h={hier_bits:6.1f}/{raw_bits:6.1f}/{h_true:6.1f} "
-              f"acc alt/neu={acc_old}/{acc_new}", flush=True)
+        print(f"E5 s={seed} t={t:5d} M0={len(M0):4d} M1={len(P):3d} depth={entry['depth']} "
+              f"assoc={assoc_store:5d} flat={flat_store:5d} bits rham/raw/h={hier_bits:6.1f}/{raw_bits:6.1f}/{h_true:6.1f} "
+              f"acc old/new={acc_old}/{acc_new}", flush=True)
     return log
 
 
 def flat_baseline_acc(seed, K=6, h=3, d=64, T=20000, sigma=0.4, zipf_a=1.1, probe_n=300):
-    """Flacher Speicher mit allen T Episoden: Konzept-Top-1 per exaktem NN."""
+    """Flat memory holding all T episodes: concept top-1 via exact NN."""
     rng = np.random.default_rng(seed)
     C, branch = make_concepts(K, h, d, rng)
     nC = len(C)
@@ -240,4 +241,4 @@ if __name__ == "__main__":
         out["E5_noforget"] = {str(s): run_stream(s, forget=False) for s in seeds[:3]}
     out["runtime_s"] = round(time.time() - t0, 1)
     json.dump(out, open(f"results_{which}.json", "w"), indent=1)
-    print("fertig", out["runtime_s"])
+    print("done", out["runtime_s"])

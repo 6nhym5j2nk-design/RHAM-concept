@@ -1,5 +1,5 @@
-"""Abbildung der RHAM-Simulation (4 Panels). Farben: Referenzpalette, validiert
-(validate_palette.js, light); Aqua < 3:1 Kontrast -> Direktbeschriftung + Markerformen."""
+"""Figure for the RHAM simulation (4 panels). Colors: reference palette, validated
+(validate_palette.js, light); Aqua < 3:1 contrast -> direct labeling + marker shapes."""
 import json
 import numpy as np
 import matplotlib
@@ -35,49 +35,49 @@ for r in E1b:
 
 fig, axs = plt.subplots(2, 2, figsize=(11, 8.2))
 
-# A: scharfer Abruf vs N bei beta=16
+# A: sharp retrieval vs N at beta=16
 ax = axs[0, 0]
-for f, c, mk, lab, dy in (("flat_b16", BLUE, "o", "flach", 0), ("rham_b16", ORANGE, "s", "RHAM", 0)):
+for f, c, mk, lab, dy in (("flat_b16", BLUE, "o", "flat", 0), ("rham_b16", ORANGE, "s", "RHAM", 0)):
     x, m, sd = mean_by(E1, "N", f)
     ax.errorbar(x, m, yerr=sd, color=c, marker=mk, ms=6, capsize=0, elinewidth=1)
     label_end(ax, x[-1], m[-1], lab, c, dy)
 ax.set_xscale("log"); ax.set_ylim(0, 1.05); ax.set_xlim(50, 9000)
-ax.set_xlabel("gespeicherte Muster N"); ax.set_ylabel("Anteil scharfer Abrufe")
-ax.set_title("A  Scharfer Abruf bei festem β = 16", loc="left", fontweight="bold")
+ax.set_xlabel("stored patterns N"); ax.set_ylabel("fraction of sharp retrievals")
+ax.set_title("A  Sharp retrieval at fixed β = 16", loc="left", fontweight="bold")
 ax.grid(axis="y", color="#ecebe7", lw=0.8)
 
-# B: Rechenaufwand
+# B: compute cost
 ax = axs[0, 1]
-x, m, _ = mean_by(E1, "N", "flat_cost"); ax.plot(x, m, color=BLUE, marker="o", ms=6); label_end(ax, x[-1], m[-1], "flach: N", BLUE)
-x, m, _ = mean_by(E1, "N", "rham_cost_b16"); ax.plot(x, m, color=ORANGE, marker="s", ms=6); label_end(ax, x[-1], m[-1], "RHAM (Beam 2)", ORANGE)
+x, m, _ = mean_by(E1, "N", "flat_cost"); ax.plot(x, m, color=BLUE, marker="o", ms=6); label_end(ax, x[-1], m[-1], "flat: N", BLUE)
+x, m, _ = mean_by(E1, "N", "rham_cost_b16"); ax.plot(x, m, color=ORANGE, marker="s", ms=6); label_end(ax, x[-1], m[-1], "RHAM (beam 2)", ORANGE)
 ax.set_xscale("log"); ax.set_yscale("log"); ax.set_xlim(50, 12000)
-ax.set_xlabel("gespeicherte Muster N"); ax.set_ylabel("Skalarprodukte pro Abruf")
-ax.set_title("B  Rechenaufwand pro Abruf", loc="left", fontweight="bold")
+ax.set_xlabel("stored patterns N"); ax.set_ylabel("dot products per retrieval")
+ax.set_title("B  Compute cost per retrieval", loc="left", fontweight="bold")
 ax.grid(axis="y", color="#ecebe7", lw=0.8)
 
-# C: Top-1 unter Rauschen
+# C: top-1 under noise
 ax = axs[1, 0]
-x, m, _ = mean_by(E1b, "eta", "nn_ceiling"); ax.plot(x, m, color=GRAY, ls="--", lw=1.5); label_end(ax, x[-1], m[-1], "Obergrenze (exakter NN)", GRAY, 8)
+x, m, _ = mean_by(E1b, "eta", "nn_ceiling"); ax.plot(x, m, color=GRAY, ls="--", lw=1.5); label_end(ax, x[-1], m[-1], "ceiling (exact NN)", GRAY, 8)
 x, m, _ = mean_by(E1b, "eta", "rham_best_top1"); ax.plot(x, m, color=ORANGE, marker="s", ms=6); label_end(ax, x[-1], m[-1], "RHAM v2", ORANGE, -6)
-v3x = [0.35, 1.0, 1.6, 2.0]; v3y = [0.997, 0.978, 0.698, 0.453]   # results_v3.txt, Beam 4
-ax.plot(v3x, v3y, color=AQUA, marker="^", ms=7); label_end(ax, v3x[-1], v3y[-1], "RHAM v3 (Beam 4)", AQUA, 4)
+v3x = [0.35, 1.0, 1.6, 2.0]; v3y = [0.997, 0.978, 0.698, 0.453]   # results_v3.txt, beam 4
+ax.plot(v3x, v3y, color=AQUA, marker="^", ms=7); label_end(ax, v3x[-1], v3y[-1], "RHAM v3 (beam 4)", AQUA, 4)
 ax.set_ylim(0, 1.05); ax.set_xlim(0.2, 2.75)
-ax.set_xlabel("Abfragerauschen η (N = 1000)"); ax.set_ylabel("Top-1-Treffer")
-ax.set_title("C  Genauigkeit unter Rauschen", loc="left", fontweight="bold")
+ax.set_xlabel("query noise η (N = 1000)"); ax.set_ylabel("top-1 hit rate")
+ax.set_title("C  Accuracy under noise", loc="left", fontweight="bold")
 ax.grid(axis="y", color="#ecebe7", lw=0.8)
 
-# D: Vergessen
+# D: forgetting
 ax = axs[1, 1]
-for pol, c, mk in (("Rekonstruktionsregel", ORANGE, "s"), ("Zufall", BLUE, "o")):
+for pol, c, mk in (("reconstruction_rule", ORANGE, "s"), ("random", BLUE, "o")):
     sub = [r for r in E4 if r["policy"] == pol]
     x, m, _ = mean_by(sub, "frac", "mean_fidelity"); ax.plot(x * 100, m, color=c, marker=mk, ms=6)
     label_end(ax, x[-1] * 100, m[-1], pol, c)
 ax.set_ylim(0.8, 1.01); ax.set_xlim(-3, 105)
-ax.set_xlabel("vergessene Blätter in M0 (%)"); ax.set_ylabel("mittlere Treue (Kosinus zum Original)")
-ax.set_title("D  Selektives Vergessen", loc="left", fontweight="bold")
+ax.set_xlabel("forgotten leaves in M0 (%)"); ax.set_ylabel("mean fidelity (cosine to original)")
+ax.set_title("D  Selective forgetting", loc="left", fontweight="bold")
 ax.grid(axis="y", color="#ecebe7", lw=0.8)
 
-fig.suptitle("RHAM-Minimalsimulation · synthetische Baumdaten (d = 64, h = 3), 5 Seeds", x=0.01, ha="left", color=INK, fontsize=12)
+fig.suptitle("RHAM minimal simulation · synthetic tree data (d = 64, h = 3), 5 seeds", x=0.01, ha="left", color=INK, fontsize=12)
 fig.tight_layout(rect=(0, 0, 1, 0.96))
 fig.savefig("rham_sim_ergebnisse.png", dpi=150)
 print("ok")

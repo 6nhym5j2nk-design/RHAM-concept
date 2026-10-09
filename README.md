@@ -1,124 +1,121 @@
 # RHAM — Recursive Hierarchical Associative Memory
 
-**Status: Architekturhypothese + Simulation. Kein fertiges System, kein
-Produkt, kein publizierter Fachartikel.** Dieses Repo dokumentiert eine
-Idee, veröffentlicht zur Diskussion und Weiterentwicklung, weil der Autor
-begrenzte Zeit hat, das allein auszuarbeiten.
+**Status: architecture hypothesis + simulation. Not a finished system, not a
+product, not a published paper.** This repo documents an idea, released for
+discussion and further development, because the author has limited time to
+work it out alone.
 
-## Die Grundidee
+## The core idea
 
-Klassischer Speicher: `Adresse → Wert`.
+Classical memory: `address → value`.
 
-RHAM ersetzt die Adresse durch einen gelernten, inhaltsbasierten Zugriff
-(content-addressable, Q/K/V-artig wie bei Attention):
-
-```
-q → softmax(q·Kᵀ/√d) → gewichtete Summe über V
-```
-
-Der eigentliche Kern ist aber nicht "Attention als Speicher" (das gibt es
-bereits vielfach, siehe unten), sondern eine **dynamisch wachsende
-Hierarchie von Gedächtnisebenen**, bei der jede Ebene die darunterliegende
-komprimiert/abstrahiert:
+RHAM replaces the address with a learned, content-based access
+(content-addressable, Q/K/V-style as in attention):
 
 ```
-M₀ (Episoden) → M₁ = C(M₀) (Muster über Episoden) → M₂ = C(M₁) (Muster über Muster) → ...
+q → softmax(q·Kᵀ/√d) → weighted sum over V
 ```
 
-Eine neue Ebene entsteht nicht von vornherein architektonisch festgelegt,
-sondern **ausgelöst**, wenn eine bestehende Ebene einen
-Interferenz-/Kapazitätsschwellenwert überschreitet. Dazu kommt
-Offline-Konsolidierung (Muster werden "im Schlaf" aus Rohdaten
-abstrahiert) und selektives Vergessen (redundante Details werden
-abgeschwächt, sobald sie auf höherer Ebene zuverlässig repräsentiert sind).
+But the real core is not "attention as memory" (that already exists in many
+forms, see below), but a **dynamically growing hierarchy of memory levels**,
+where each level compresses/abstracts the one below it:
 
-Fünf Regeln, siehe [`docs/RHAM_Machbarkeitsanalyse.md`](docs/RHAM_Machbarkeitsanalyse.md)
-für die volle Herleitung:
+```
+M₀ (episodes) → M₁ = C(M₀) (patterns over episodes) → M₂ = C(M₁) (patterns over patterns) → ...
+```
 
-1. Verteilte Speicherung (hochdimensionale Aktivierungsmuster statt Adressen)
-2. Assoziativer Abruf (Q/K/V-artige Attention)
-3. Dynamische Hierarchie (neue Ebene bei Interferenz + Strukturtest)
-4. Offline-Konsolidierung (`M_{n+1} ← C(M_n)`)
-5. Selektives Vergessen (Herabstufung ins Archiv, nie Löschung der Rohdaten)
+A new level is not fixed in the architecture from the start, but
+**triggered** when an existing level exceeds an interference/capacity
+threshold. Added to this are offline consolidation (patterns are abstracted
+from raw data "during sleep") and selective forgetting (redundant details
+are weakened once they are reliably represented at a higher level).
 
-**Wichtige Korrektur gegenüber der ersten Intuition:** Die physische
-Informationskapazität wächst dadurch *nicht* exponentiell — Shannon lässt
-sich nicht umgehen. Was wächst, ist die kombinatorische
-Repräsentationskapazität (Relationen zwischen Relationen), und die
-Hypothese ist, dass das System mit wachsender Erfahrung zunehmend die
-**Struktur** des Erfahrungsraums speichert statt Rohdaten — ähnlich der
-Unterscheidung zwischen episodischem und semantischem Gedächtnis.
+Five rules — see [`docs/RHAM_Machbarkeitsanalyse.md`](docs/RHAM_Machbarkeitsanalyse.md)
+for the full derivation:
 
-## Was schon in der Literatur existiert (Stand der Prüfung: Oktober 2026)
+1. Distributed storage (high-dimensional activation patterns instead of addresses)
+2. Associative retrieval (Q/K/V-style attention)
+3. Dynamic hierarchy (new level on interference + structure test)
+4. Offline consolidation (`M_{n+1} ← C(M_n)`)
+5. Selective forgetting (demotion to the archive, never deletion of the raw data)
 
-Eine gezielte Prior-Art-Recherche hat ergeben: große Teile der Einzelidee
-existieren bereits, teils sehr nah an der Gesamtkombination:
+**Important correction to the first intuition:** physical information
+capacity does *not* grow exponentially this way — Shannon cannot be
+circumvented. What grows is the combinatorial representation capacity
+(relations between relations), and the hypothesis is that as experience
+accumulates, the system increasingly stores the **structure** of the
+experience space instead of raw data — similar to the distinction between
+episodic and semantic memory.
 
-- **Nested Learning / HOPE** (Behrouz et al.) — verschachtelte
-  Gedächtnisebenen mit unterschiedlichen Update-Frequenzen
-- **Titans** (NeurIPS 2025) — neuronales Langzeitgedächtnis, das sich zur
-  Inferenzzeit weiter verändert
-- **Memory Layers at Scale** (Meta) — trainierbare Key-Value-Lookups als
-  Gedächtnisschicht, bis 128 Mrd. Parameter
-- **HMT — Hierarchical Memory Transformer** (NAACL 2025) — explizit
-  hierarchisches Memory mit Recall und segmentweiser Rekurrenz
-- **"Language Models Need Sleep"** (Behrouz, Hashemi, Mirrokni, 2026) —
-  expliziter Sleep-/Consolidation-Mechanismus
-- **DeltaStack** (ICML 2026) — differenzierbarer Stack gegen die
-  Beschränkung von fixed-size associative memory bei rekursiven Strukturen
+## What already exists in the literature (as checked: October 2026)
 
-**Nicht gefunden** (Stand dieser Prüfung, keine erschöpfende
-adversarial novelty search): eine Architektur, bei der die **Zahl/Tiefe
-der Gedächtnisebenen selbst dynamisch als Funktion der gespeicherten
-Information wächst** (nicht architektonisch vorab fixiert wie bei HOPE),
-kombiniert mit kapazitäts-/interferenzgetriggerter Ebenenerzeugung,
-Offline-Konsolidierung und anschließendem selektivem Vergessen in einem
-geschlossenen Zyklus. Das ist die konkrete Stelle, an der weiter geprüft
-werden müsste — unter anderem gegen Neural Turing Machines/DNC, Adaptive
-Computation, growing neural networks, hierarchical predictive coding,
-hippocampal–cortical models und vector-symbolic/hyperdimensional computing.
+A targeted prior-art search found that large parts of the individual idea
+already exist, some of them very close to the overall combination:
 
-## Was in diesem Repo ist — und was nicht
+- **Nested Learning / HOPE** (Behrouz et al.) — nested memory levels with
+  different update frequencies
+- **Titans** (NeurIPS 2025) — a neural long-term memory that keeps changing
+  at inference time
+- **Memory Layers at Scale** (Meta) — trainable key-value lookups as a
+  memory layer, up to 128B parameters
+- **HMT — Hierarchical Memory Transformer** (NAACL 2025) — explicitly
+  hierarchical memory with recall and segment-wise recurrence
+- **"Language Models Need Sleep"** (Behrouz, Hashemi, Mirrokni, 2026) — an
+  explicit sleep/consolidation mechanism
+- **DeltaStack** (ICML 2026) — a differentiable stack addressing the
+  limitation of fixed-size associative memory for recursive structures
 
-Dieses Repo enthält die **konzeptionelle Herleitung und die synthetischen
-Simulationen** (vier Härtetest-Runden mit künstlich erzeugten
-Konzept-Clustern, plus ein erster Funktionsnachweis mit echten
-Text-Embeddings auf einem kleinen, unkritischen Beispielkorpus).
+**Not found** (as of this check, no exhaustive adversarial novelty search):
+an architecture in which the **number/depth of memory levels itself grows
+dynamically as a function of the stored information** (rather than being
+architecturally fixed in advance, as in HOPE), combined with
+capacity-/interference-triggered level creation, offline consolidation, and
+subsequent selective forgetting in one closed cycle. That is the concrete
+point that would need further checking — among others against Neural Turing
+Machines/DNC, adaptive computation, growing neural networks, hierarchical
+predictive coding, hippocampal–cortical models, and vector-symbolic/
+hyperdimensional computing.
 
-Es enthält **nicht** die empirischen Tests auf realen Fachtext-Korpora
-(inklusive einer Domänenanalyse zu einem medizinischen Fachwörterbuch) —
-die laufen in einem privaten Repo weiter, u. a. weil dort Fragen der
-Textherkunft und Sorgfaltspflicht (keine personenbezogenen/Patientendaten,
-Quellenkritik) laufend geprüft werden müssen, bevor daraus zitierfähige
-Aussagen würden.
+## What's in this repo — and what isn't
 
-## Ergebnisse der synthetischen Simulationen (Kurzfassung)
+This repo contains the **conceptual derivation and the synthetic
+simulations** (four stress-test rounds with artificially generated concept
+clusters, plus a first functional check with real text embeddings on a
+small, non-sensitive example corpus).
 
-| Runde | Frage | Ergebnis |
+It does **not** contain the empirical tests on real domain-text corpora
+(including a domain analysis on a medical reference dictionary) — those
+continue in a private repo, among other reasons because questions of text
+provenance and due diligence (no personal/patient data, source criticism)
+need to be checked there on an ongoing basis before any citable claims could
+arise from them.
+
+## Results of the synthetic simulations (summary)
+
+| Round | Question | Result |
 |---|---|---|
-| 1 | Bringt der assoziative Zugriff etwas? | P1 teilweise widerlegt: Vorteil ist scharfer Abruf bei begrenztem β + log. Abrufkosten, nicht mehr Kapazität |
-| 2 | Online-Strom, realistische Konzeptverteilung | Bits/Episode folgen der Entropierate der Quelle; 270 statt 20.000 Vektoren bei 100 % Konzeptabruf |
-| 3 | Härtetest: überlappende Konzepte | Teilungsregel löst Verschmelzung; seltene Episoden ohne Markierung gehen im Index verloren, bleiben aber im Archiv abrufbar |
-| 4 | Drift + Alterung | Alterungsregel halbiert Speicher unter Drift bei 100 % Genauigkeit |
+| 1 | Does associative access help at all? | P1 partially refuted: the advantage is sharp retrieval at bounded β + logarithmic retrieval cost, not more capacity |
+| 2 | Online stream, realistic concept distribution | Bits/episode track the source's entropy rate; 270 instead of 20,000 vectors at 100% concept retrieval |
+| 3 | Stress test: overlapping concepts | A split rule resolves merging; rare episodes without tagging are lost in the index but remain retrievable in the archive |
+| 4 | Drift + aging | An aging rule halves memory under drift at 100% accuracy |
 
 Details in `docs/RHAM_Simulation_*.md`. Code in `sim/`:
-`rham_sim.py` (Runde 1), `rham_online.py` (Runde 2), `rham_hard.py`
-(Runde 3), `rham_rule7.py` (Runde 4, aktuellste Kernimplementierung der
-Speicherklasse).
+`rham_sim.py` (round 1), `rham_online.py` (round 2), `rham_hard.py`
+(round 3), `rham_rule7.py` (round 4, the most current core implementation
+of the memory class).
 
-## Mitmachen
+## Get involved
 
-Das ist eine offene Idee, kein fertiges Paper. Wer das weiterdenken,
-widerlegen, nachsimulieren oder gegen weitere Prior Art prüfen will — Issues
-und PRs willkommen. Besonders hilfreich:
+This is an open idea, not a finished paper. Anyone who wants to develop it
+further, refute it, reproduce the simulations, or check it against more
+prior art — issues and PRs welcome. Especially helpful:
 
-- Eine echte adversarial novelty search gegen die oben genannte Literatur
-- Unabhängige Reproduktion der Simulationsergebnisse
-- Theoretische Einordnung der Kapazitätsargumentation (Shannon-Grenzen,
-  kombinatorische vs. physische Kapazität)
+- A real adversarial novelty search against the literature cited above
+- Independent reproduction of the simulation results
+- Theoretical grounding of the capacity argument (Shannon limits,
+  combinatorial vs. physical capacity)
 
-## Lizenz
+## License
 
-Noch nicht final festgelegt — bis dahin: Code und Text frei zur Diskussion,
-bitte bei Verwendung auf dieses Repo verweisen. Für eine formelle Lizenz
-bitte Issue öffnen.
+Not finalized yet — until then: code and text are free for discussion,
+please credit this repo if you use it. Open an issue for a formal license.

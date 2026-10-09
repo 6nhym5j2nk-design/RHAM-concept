@@ -1,30 +1,30 @@
 ---
-projekt: RHAM
+project: RHAM
 repo: https://github.com/6nhym5j2nk-design/rham-project
-stand: 2026-10-08
+date: 2026-10-08
 tags: [rham, embeddings, ollama, smoke-test]
-modus: FAST
+mode: FAST
 ---
-# RHAM – Smoke-Test mit echten Embeddings (2026-10-08)
+# RHAM – Smoke Test with Real Embeddings (2026-10-08)
 
-**Code:** `sim/rham_embed.py smoke`. Modell: `bge-m3` (Ollama, lokal auf dem Mac mini), 1024 Dimensionen. Korpus: die eigenen Projekt-Markdowns `docs/*.md` (5 Dateien, 57 Chunks à ~600 Zeichen) – echter, nicht-synthetischer Text, aber nur zum Pipeline-Test.
+**Code:** `sim/rham_embed.py smoke`. Model: `bge-m3` (Ollama, local on the Mac mini), 1024 dimensions. Corpus: the project's own markdown files `docs/*.md` (5 files, 57 chunks of ~600 characters each) – real, non-synthetic text, but used only to test the pipeline.
 
-## Ergebnis
+## Result
 
-| | RHAM | flach (exakter NN) |
+| | RHAM | flat (exact NN) |
 |---|---|---|
-| Dokument-Zuordnung (Hold-out, 14 Abfragen) | 0,643 | 0,643 |
-| gespeicherte Vektoren | 33 (M0=28, heiß=5) | 43 |
-| Kosten pro Abfrage | 33 | 43 |
+| document assignment (held-out, 14 queries) | 0.643 | 0.643 |
+| stored vectors | 33 (M0=28, hot=5) | 43 |
+| cost per query | 33 | 43 |
 
-## Lesart
+## Reading
 
-Erste durchgängige Bestätigung, dass die Pipeline (Chunking → echte Ollama-Embeddings → `OnlineRHAM7`-Konsolidierung → Hold-out-Auswertung) mit realen, nicht-synthetischen Vektoren funktioniert, ohne Abstürze oder unsinnige Werte. RHAM erreicht die gleiche Genauigkeit wie die flache Baseline bei 23 % weniger Speicher – konsistent mit dem Muster aus den synthetischen Experimenten (Runde 2, E5).
+First end-to-end confirmation that the pipeline (chunking → real Ollama embeddings → `OnlineRHAM7` consolidation → held-out evaluation) works with real, non-synthetic vectors, without crashes or nonsensical values. RHAM reaches the same accuracy as the flat baseline at 23% less storage – consistent with the pattern from the synthetic experiments (round 2, E5).
 
-**Einschränkung:** Stichprobe viel zu klein für belastbare Aussagen (57 Chunks, 5 Dokumente, 14 Abfragen; 9/14 Treffer). Nur ein Funktionsnachweis der Pipeline, keine Aussage über die eigentliche Forschungsfrage (sinnvolle Sub-Struktur innerhalb eines Themas). Nächster Schritt: Lauf mit echtem Fachkorpus (`sim/corpus_real/`, lokal, nicht im Repo) – Wörterbuch, Instrumentenkatalog, eigene Publikationen.
+**Caveat:** The sample is far too small for robust conclusions (57 chunks, 5 documents, 14 queries; 9/14 hits). This is only a functional proof of the pipeline, not a statement about the actual research question (meaningful sub-structure within a topic). Next step: a run on a real domain corpus (`sim/corpus_real/`, local, not in the repo) – a dictionary, an instrument catalog, own publications.
 
-## Nächste Schritte
+## Next steps
 
-1. Echten Fachkorpus in `sim/corpus_real/` ablegen und `python3 sim/rham_embed.py real` laufen lassen.
-2. Bei größerem Korpus: Teilungsregel (Regel 6) und G-means-Teilungstest aus Runde 4 gegen echte Embedding-Cluster prüfen, nicht nur isotrope Nullmodell-Annahme.
-3. Qualitative Stichprobe: welche Chunks landen im selben Prototyp – ergibt das inhaltlich Sinn?
+1. Place a real domain corpus in `sim/corpus_real/` and run `python3 sim/rham_embed.py real`.
+2. On a larger corpus: test the split rule (Rule 6) and the G-means split test from round 4 against real embedding clusters, not just the isotropic null-model assumption.
+3. Qualitative spot-check: which chunks end up in the same prototype – does that make substantive sense?
