@@ -18,6 +18,8 @@ attention:
 q → softmax(q·Kᵀ/√d) → weighted sum over V
 ```
 
+![Classic address-based memory vs. RHAM's content-addressable retrieval](assets/classic_vs_associative.svg)
+
 That part alone is not new. The actual hypothesis concerns what happens
 when a single associative memory runs out of room: instead of only getting
 bigger, it grows a new level above itself that compresses what's below.
@@ -35,6 +37,8 @@ Queries then route top-down: a query first meets the most abstract level
 that can plausibly place it, narrowing the search before it reaches the raw
 episodes.
 
+![A dynamically growing memory hierarchy with top-down query routing](assets/hierarchy_retrieval.svg)
+
 Two more pieces close the loop. Offline consolidation periodically rebuilds
 the upper levels from what has accumulated below ("sleep"). Selective
 forgetting demotes an episode out of the fast associative layers once a
@@ -50,6 +54,8 @@ The five rules, stated plainly:
 4. **Offline consolidation** — $M_{n+1} \leftarrow C(M_n)$.
 5. **Selective forgetting** — demotion to an archive, keyed to
    reconstructibility from above.
+
+![The closed growth/consolidation/forgetting cycle](assets/growth_cycle.svg)
 
 One correction up front, since it's easy to overclaim here: physical storage
 capacity does not grow exponentially this way. Shannon's limits still

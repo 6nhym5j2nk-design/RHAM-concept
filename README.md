@@ -5,6 +5,8 @@ product, not a published paper.** This repo documents an idea, released for
 discussion and further development, because the author has limited time to
 work it out alone.
 
+![Classic address-based memory vs. RHAM's content-addressable retrieval](assets/classic_vs_associative.svg)
+
 ## The core idea
 
 Classical memory: `address → value`.
@@ -29,6 +31,10 @@ A new level is not fixed in the architecture from the start, but
 threshold. Added to this are offline consolidation (patterns are abstracted
 from raw data "during sleep") and selective forgetting (redundant details
 are weakened once they are reliably represented at a higher level).
+
+![A dynamically growing memory hierarchy with top-down query routing](assets/hierarchy_retrieval.svg)
+
+![The closed growth/consolidation/forgetting cycle](assets/growth_cycle.svg)
 
 Five rules — see [`docs/RHAM_Machbarkeitsanalyse.md`](docs/RHAM_Machbarkeitsanalyse.md)
 for the full derivation:
