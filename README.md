@@ -96,6 +96,21 @@ provenance and due diligence (no personal/patient data, source criticism)
 need to be checked there on an ongoing basis before any citable claims could
 arise from them.
 
+**Methodological update (October 2026):** a first single-seed run on a
+combined real-text corpus (domain dictionary + general-knowledge material
+in one stream) suggested the online dynamics might not hurt domain
+performance when mixed with unrelated material. Because `OnlineRHAM7`'s
+online dynamics are path-dependent, that single run was re-run across 10
+independent seeds to check whether the effect was real or just one seed's
+luck — standard practice before treating any such result as a finding,
+not a one-off. The result: the headline effect held up, but one specific
+per-source claim from the single-seed run did not reproduce and had to be
+corrected (noise around zero, not a real effect). The numbers themselves
+stay in the private repo per the policy above; the point worth noting
+publicly is the methodology — single-seed results from this online,
+path-dependent dynamic are not reliable on their own, multi-seed
+repetition is now the standard before reporting a per-source effect.
+
 ## Results of the synthetic simulations (summary)
 
 | Round | Question | Result |
